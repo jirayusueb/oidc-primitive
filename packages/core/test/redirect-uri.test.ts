@@ -29,19 +29,25 @@ describe('RFC 9700 s4.1.3 exact redirect matching', () => {
 
 describe('RFC 6749 s3.1.2 and RFC 8252 s7 registration rules', () => {
 	it('rejects fragments, plain http and dangerous schemes', () => {
-		assert.throws(() => RedirectUri.validate('https://app.example/cb#x'), OAuthError.InvalidRequest);
-		assert.throws(() => RedirectUri.validate('http://app.example/cb'), OAuthError.InvalidRequest);
-		assert.throws(() => RedirectUri.validate('/relative'), OAuthError.InvalidRequest);
+		assert.throws(() => RedirectUri.validate('https://app.example/cb#x'), OAuthError.InvalidRedirectUri);
+		assert.throws(() => RedirectUri.validate('http://app.example/cb'), OAuthError.InvalidRedirectUri);
+		assert.throws(() => RedirectUri.validate('/relative'), OAuthError.InvalidRedirectUri);
 		assert.throws(
 			() => RedirectUri.validate('javascript:alert(1)', { applicationType: 'native' }),
-			OAuthError.InvalidRequest,
+			OAuthError.InvalidRedirectUri,
 		);
-		assert.throws(() => RedirectUri.validate('com.example.app:/cb'), OAuthError.InvalidRequest);
+		assert.throws(() => RedirectUri.validate('com.example.app:/cb'), OAuthError.InvalidRedirectUri);
+	});
+
+	it('rejects http://localhost for every client (RFC 8252 s8.3)', () => {
+		assert.throws(() => RedirectUri.validate('http://localhost:3000/cb'), OAuthError.InvalidRedirectUri);
+		assert.throws(() => RedirectUri.validate('http://localhost/cb', { applicationType: 'native' }), OAuthError.InvalidRedirectUri);
 	});
 
 	it('accepts https, loopback http and native private-use schemes', () => {
 		RedirectUri.validate('https://app.example/cb');
 		RedirectUri.validate('http://127.0.0.1:3000/cb');
+		RedirectUri.validate('http://[::1]:3000/cb');
 		RedirectUri.validate('com.example.app:/cb', { applicationType: 'native' });
 	});
 });

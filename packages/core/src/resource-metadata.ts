@@ -9,6 +9,18 @@ export interface Options {
 	readonly resourceDocumentation?: string;
 }
 
+/** RFC 9728 s2 document; absent optional fields are omitted. */
+export interface ProtectedResourceMetadata {
+	readonly resource: string;
+	readonly authorization_servers: readonly string[];
+	readonly scopes_supported?: readonly string[];
+	readonly bearer_methods_supported: readonly string[];
+	readonly resource_name?: string;
+	readonly jwks_uri?: string;
+	readonly resource_signing_alg_values_supported?: readonly string[];
+	readonly resource_documentation?: string;
+}
+
 const parseResource = (resource: string): URL => {
 	let url: URL;
 	try {
@@ -23,10 +35,10 @@ const parseResource = (resource: string): URL => {
 };
 
 /** RFC 9728 s2 protected resource metadata in snake_case. */
-export const make = (options: Options): Record<string, unknown> => {
+export const make = (options: Options): ProtectedResourceMetadata => {
 	parseResource(options.resource);
 	if (options.authorizationServers.length === 0) throw new TypeError('authorizationServers must not be empty');
-	const doc: Record<string, unknown> = {
+	const doc = {
 		resource: options.resource,
 		authorization_servers: options.authorizationServers,
 		scopes_supported: options.scopesSupported,
@@ -36,8 +48,9 @@ export const make = (options: Options): Record<string, unknown> => {
 		resource_signing_alg_values_supported: options.resourceSigningAlgValuesSupported,
 		resource_documentation: options.resourceDocumentation,
 	};
-	for (const key of Object.keys(doc)) if (doc[key] === undefined) delete doc[key];
-	return doc;
+	return Object.fromEntries(
+		Object.entries(doc).filter(([, value]) => value !== undefined),
+	) as unknown as ProtectedResourceMetadata;
 };
 
 /** RFC 9728 s3.1: `/.well-known/oauth-protected-resource` between the host and the path and query. */

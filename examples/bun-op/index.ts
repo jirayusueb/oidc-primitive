@@ -3,7 +3,9 @@
 // Every step cites the spec section it satisfies. Dev-only: synthetic users, automatic consent.
 import { Database } from 'bun:sqlite';
 import {
+	AccessToken,
 	AccessTokenVerifier,
+	ClientAssertion,
 	Bearer,
 	Claims,
 	ClientSecret,
@@ -52,6 +54,8 @@ export const fromEnv = (): Config => ({
 interface Client {
 	client_id: string;
 	secretHash?: string;
+	/** private_key_jwt: the client's registered keys (RFC 7523 s3). */
+	keys?: Keys.VerifyKey;
 	redirect_uris: string[];
 	method: ClientConfig['token_endpoint_auth_method'];
 	pkce?: 'required' | 'oidc-nonce';
@@ -69,7 +73,7 @@ interface Grant {
 	challenge?: string;
 	pkce_required: boolean;
 	audience: string;
-	claims: Claims.Request;
+	claims: Claims.ClaimsRequest;
 	auth_time: number;
 	include_auth_time: boolean;
 	acr?: string;
@@ -81,7 +85,7 @@ const claimsSupported = [
 	'sub', 'iss', 'auth_time', 'acr', 'name', 'given_name', 'family_name', 'preferred_username', 'email',
 	'email_verified', 'address', 'phone_number', 'phone_number_verified', 'updated_at',
 ];
-const accessTtl = 600; // seconds, matches TokenSigner's default "10m"
+const accessTtl = AccessToken.defaultLifetime; // seconds, the lifetime TokenSigner uses by default
 const codeTtl = 60; // checklist: authorization codes live 60 s or less
 const refreshTtl = 30 * 24 * 3600;
 const spentTtl = 24 * 3600;
@@ -128,11 +132,10 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 
 	const clients = new Map<string, Client>();
 	for (const c of config.clients) {
-		// shortcut: private_key_jwt needs a JWKS resolver (jose), which examples may not import; use a real host for it.
-		if (c.token_endpoint_auth_method === 'private_key_jwt') {
-			throw new Error(`client ${c.client_id}: private_key_jwt is not supported by this example`);
+		if (c.token_endpoint_auth_method === 'private_key_jwt' && !c.jwks_uri) {
+			throw new Error(`client ${c.client_id}: jwks_uri is required for private_key_jwt`);
 		}
-		if (c.token_endpoint_auth_method !== 'none' && !c.client_secret) {
+		if (['client_secret_basic', 'client_secret_post'].includes(c.token_endpoint_auth_method) && !c.client_secret) {
 			throw new Error(`client ${c.client_id}: client_secret is required for ${c.token_endpoint_auth_method}`);
 		}
 		for (const uri of c.redirect_uris) RedirectUri.validate(uri);
@@ -140,6 +143,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			client_id: c.client_id,
 			// RFC 6749 s10.10: only the hash of the secret is kept.
 			secretHash: c.client_secret ? await Token.hash(c.client_secret) : undefined,
+			keys: c.jwks_uri ? Keys.remoteSet(c.jwks_uri) : undefined,
 			redirect_uris: c.redirect_uris,
 			method: c.token_endpoint_auth_method,
 			pkce: c.pkce,
@@ -153,6 +157,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		CREATE TABLE IF NOT EXISTS spent(hash TEXT PRIMARY KEY, grant_id TEXT NOT NULL, exp INTEGER NOT NULL);
 		CREATE TABLE IF NOT EXISTS grants(id TEXT PRIMARY KEY, data TEXT NOT NULL, revoked INTEGER NOT NULL DEFAULT 0);
 		CREATE TABLE IF NOT EXISTS refresh(hash TEXT PRIMARY KEY, grant_id TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0, exp INTEGER NOT NULL);
+		CREATE TABLE IF NOT EXISTS assertions(client_id TEXT NOT NULL, jti TEXT NOT NULL, exp INTEGER NOT NULL, PRIMARY KEY (client_id, jti));
 		CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY, username TEXT NOT NULL, sub TEXT NOT NULL, auth_time INTEGER NOT NULL);
 	`);
 	// shortcut: expired rows are never swept; add a periodic DELETE for a long-running deployment.
@@ -166,29 +171,23 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 	const verifier = AccessTokenVerifier.make({ issuer, audience: issuer, keys: publicKey });
 
 	const url = (path: string): string => `${issuer}${path}`;
-	const metadata: Record<string, unknown> = {
-		...Metadata.authorizationServer({
-			issuer,
-			endpoints: {
-				authorization: url('/authorize'),
-				token: url('/token'),
-				jwks: url('/jwks'),
-				userinfo: url('/userinfo'),
-				introspection: url('/introspect'),
-				revocation: url('/revoke'),
-			},
-			scopes: scopesSupported,
-			claims: claimsSupported,
-			grantTypes: ['authorization_code', 'refresh_token', 'client_credentials'],
-			tokenEndpointAuthMethods: ['client_secret_basic', 'client_secret_post', 'none'],
-			tokenEndpointAuthSigningAlgs: undefined,
-			idTokenSigningAlgs: ['RS256'],
-		}),
-		claims_parameter_supported: true,
-		request_parameter_supported: false,
-		request_uri_parameter_supported: false,
-	};
-	delete metadata.token_endpoint_auth_signing_alg_values_supported; // only meaningful with private_key_jwt
+	const metadata: Metadata.AuthorizationServerMetadata = Metadata.authorizationServer({
+		issuer,
+		endpoints: {
+			authorization: url('/authorize'),
+			token: url('/token'),
+			jwks: url('/jwks'),
+			userinfo: url('/userinfo'),
+			introspection: url('/introspect'),
+			revocation: url('/revoke'),
+		},
+		scopesSupported,
+		claimsSupported,
+		grantTypesSupported: ['authorization_code', 'refresh_token', 'client_credentials'],
+		tokenEndpointAuthMethodsSupported: ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'none'],
+		idTokenSigningAlgValuesSupported: ['RS256'],
+		claimsParameterSupported: true,
+	});
 
 	// ---- storage helpers -------------------------------------------------------------------------
 
@@ -251,9 +250,9 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 
 		// PKCE (RFC 7636 s4.3, RFC 9700 s2.1.1, design D13): only a confidential `oidc-nonce` client that sent a nonce may skip it.
 		const challenge = p.get('code_challenge') ?? undefined;
-		const exempt = client.pkce === 'oidc-nonce' && client.secretHash !== undefined && nonce !== undefined;
+		const exempt = client.pkce === 'oidc-nonce' && client.method !== 'none' && nonce !== undefined;
 		if (challenge !== undefined) {
-			Pkce.checkMethod(p.get('code_challenge_method'));
+			Pkce.validateMethod(p.get('code_challenge_method'));
 			if (!Pkce.isChallenge(challenge)) throw new OAuthError.InvalidRequest('code_challenge is malformed');
 		} else if (!exempt) {
 			throw new OAuthError.InvalidRequest('PKCE with code_challenge_method=S256 is required');
@@ -366,17 +365,34 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 
 	// ---- token endpoint (RFC 6749 s3.2) --------------------------------------------------------
 
-	/** RFC 6749 s2.3: Basic, form post, or none; the method must be the one registered for the client. */
+	/** RFC 6749 s2.3 and RFC 7523 s3: the method used must be the one registered for the client. */
 	const authenticate = async (req: Request, f: URLSearchParams): Promise<Client> => {
-		if (f.has('client_assertion')) throw new OAuthError.InvalidClient('private_key_jwt is not supported');
 		const basic = ClientSecret.parseBasic(req.headers.get('authorization'));
+		// RFC 6749 s5.2: answer with a Basic challenge only when the client tried Basic.
+		const fail = (): OAuthError.InvalidClient =>
+			new OAuthError.InvalidClient('client authentication failed', basic ? { scheme: 'Basic' } : {});
+		const assertion = f.get('client_assertion');
+		if (assertion !== null) {
+			if (f.get('client_assertion_type') !== ClientAssertion.assertionType) throw fail();
+			const client = clients.get(f.get('client_id') ?? '');
+			if (!client || client.method !== 'private_key_jwt' || !client.keys) throw fail();
+			const { jti, expiresAt } = await ClientAssertion.verify(assertion, {
+				issuer,
+				clientId: client.client_id,
+				keys: client.keys,
+			});
+			// Checklist: record each assertion jti until it expires and reject a repeat (RFC 7523 s3 item 7).
+			const fresh = db
+				.query('INSERT INTO assertions(client_id, jti, exp) VALUES (?, ?, ?) ON CONFLICT DO NOTHING RETURNING jti')
+				.get(client.client_id, jti, expiresAt);
+			if (!fresh) throw fail();
+			return client;
+		}
 		const secret = basic ? Redacted.value(basic.clientSecret) : f.get('client_secret');
 		const method = basic ? 'client_secret_basic' : secret !== null ? 'client_secret_post' : 'none';
 		const client = clients.get(basic?.clientId ?? f.get('client_id') ?? '');
-		if (!client || client.method !== method) throw new OAuthError.InvalidClient('client authentication failed');
-		if (method !== 'none' && !(await Token.matchesHash(secret!, client.secretHash!))) {
-			throw new OAuthError.InvalidClient('client authentication failed');
-		}
+		if (!client || client.method !== method) throw fail();
+		if (method !== 'none' && !(await Token.matchesHash(secret!, client.secretHash!))) throw fail();
 		return client;
 	};
 
@@ -476,7 +492,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 
 		if (type === 'client_credentials') {
 			// RFC 6749 s4.4: confidential clients only, no refresh token, no ID token.
-			if (client.secretHash === undefined || !client.grant_types.includes(type)) {
+			if (client.method === 'none' || !client.grant_types.includes(type)) {
 				throw new OAuthError.UnauthorizedClient('client_credentials not allowed');
 			}
 			const scope = Scope.parse(f.get('scope')).filter((s) => scopesSupported.includes(s) && s !== 'openid');
@@ -534,9 +550,9 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const t = f.get('token');
 		const r = t ? await resolve(t) : undefined;
 		// Only the client the token was issued to may see it.
-		if (!r || r.grant.client_id !== client.client_id) return Introspection.response(Introspection.inactive());
+		if (!r || r.grant.client_id !== client.client_id) return OAuthResponse.json(Introspection.inactive());
 		const g = r.grant;
-		return Introspection.response(
+		return OAuthResponse.json(
 			Introspection.active(
 				r.access
 					? {

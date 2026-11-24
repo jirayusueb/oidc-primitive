@@ -1,19 +1,17 @@
-import { type CryptoKey, type JWTPayload, type JWTVerifyGetKey, jwtVerify } from 'jose';
-import { isKeyFetchFailure } from './internal/key-errors.ts';
+import { type JWTPayload, jwtVerify } from 'jose';
+import { guardKeys, isKeyFetchFailure } from './internal/key-errors.ts';
+import { assertionAlgorithms } from './keys.ts';
+import type { VerifyKey } from './keys.ts';
 import { InvalidClient, TemporarilyUnavailable } from './oauth-error.ts';
 
 /** RFC 7521 s4.2 `client_assertion_type` for JWT bearer assertions. */
 export const assertionType = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer';
 
-export const algorithms: readonly string[] = [
-	'ES256', 'EdDSA', 'PS256', 'RS256', 'ES384', 'ES512', 'PS384', 'PS512', 'RS384', 'RS512',
-];
-
 export interface VerifyOptions {
 	readonly issuer: string;
 	readonly clientId: string;
-	/** A `CryptoKey` or a jose key resolver such as `createRemoteJWKSet` or `createLocalJWKSet`. */
-	readonly keys: CryptoKey | JWTVerifyGetKey;
+	/** A public key, or a resolver from `Keys.remoteSet` (a `jwks_uri`) or `Keys.localSet` (registered `jwks`). */
+	readonly keys: VerifyKey;
 	/** Seconds of clock skew, default 30. */
 	readonly clockTolerance?: number;
 	/** Maximum seconds `exp` may lie ahead, default 600. */
@@ -27,15 +25,15 @@ export interface Verified {
 	readonly expiresAt: number;
 }
 
-const fail = (): InvalidClient => new InvalidClient('Client assertion is invalid');
+const fail = (): InvalidClient => new InvalidClient('client assertion is invalid');
 
 /** RFC 7523 s3 and RFC 10070 s4: `aud` is exactly the issuer identifier. Replay checking stays with the host. */
 export const verify = async (jwt: string, options: VerifyOptions): Promise<Verified> => {
 	const { issuer, clientId, keys, clockTolerance = 30, maxLifetime = 600, currentDate } = options;
 	let payload: JWTPayload;
 	try {
-		({ payload } = await jwtVerify(jwt, keys as JWTVerifyGetKey, {
-			algorithms: [...algorithms],
+		({ payload } = await jwtVerify(jwt, guardKeys(keys), {
+			algorithms: [...assertionAlgorithms],
 			issuer: clientId,
 			subject: clientId,
 			audience: issuer,

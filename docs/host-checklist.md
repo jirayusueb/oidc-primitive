@@ -5,7 +5,7 @@
 ## Authorization endpoint
 
 - Reject the request before any redirect when `client_id` is unknown or `redirect_uri` fails `RedirectUri.matches`. Render an error page; never redirect to an unverified URI (RFC 9700 s4.11.2).
-- Accept only `response_type=code`; call `Pkce.checkMethod` when a `code_challenge` is present.
+- Accept only `response_type=code`; call `Pkce.validateMethod` when a `code_challenge` is present.
 - Decide per client whether PKCE is required. RFC 9700 s2.1.1 allows confidential OpenID Connect clients that send a `nonce` to omit it; everyone else must send S256.
 - Resolve `resource` with `Resource.audience` and store the result with the code.
 - Answer with `OAuthResponse.redirect` (adds `iss`, RFC 9207) or `err.toRedirect`.

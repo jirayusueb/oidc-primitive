@@ -1,28 +1,27 @@
-import { InvalidRequest } from './oauth-error.ts';
+import { InvalidRedirectUri } from './oauth-error.ts';
 
 export type ApplicationType = 'web' | 'native';
 
 const loopbackHosts = ['127.0.0.1', '[::1]'];
-const devHosts = [...loopbackHosts, 'localhost'];
 const forbiddenSchemes = ['javascript:', 'data:', 'vbscript:', 'file:', 'blob:'];
 
 /**
- * Check a redirect URI at registration time.
- * No fragment (RFC 6749 s3.1.2). `http` only on loopback or localhost (RFC 9700 s2.6,
- * RFC 8252 s7.3). Private-use schemes only for native clients (RFC 8252 s7.1).
+ * Check a redirect URI at registration time; throws `InvalidRedirectUri` (RFC 7591 s3.2.2).
+ * No fragment (RFC 6749 s3.1.2). `http` only on `127.0.0.1` or `[::1]`, never `localhost`
+ * (RFC 8252 s8.3, RFC 9700 s2.6). Private-use schemes only for native clients (RFC 8252 s7.1).
  */
 export const validate = (uri: string, options: { readonly applicationType?: ApplicationType } = {}): void => {
-	if (!URL.canParse(uri)) throw new InvalidRequest('redirect_uri is not an absolute URI');
+	if (!URL.canParse(uri)) throw new InvalidRedirectUri('redirect_uri is not an absolute URI');
 	const url = new URL(uri);
 	const type = options.applicationType ?? 'web';
-	if (uri.includes('#')) throw new InvalidRequest('redirect_uri must not contain a fragment');
+	if (uri.includes('#')) throw new InvalidRedirectUri('redirect_uri must not contain a fragment');
 	if (url.protocol === 'https:') return;
 	if (url.protocol === 'http:') {
-		if (devHosts.includes(url.hostname)) return;
-		throw new InvalidRequest('redirect_uri must use https outside loopback');
+		if (loopbackHosts.includes(url.hostname)) return;
+		throw new InvalidRedirectUri('redirect_uri must use https outside loopback');
 	}
 	if (type === 'native' && !forbiddenSchemes.includes(url.protocol)) return;
-	throw new InvalidRequest('redirect_uri scheme is not allowed');
+	throw new InvalidRedirectUri('redirect_uri scheme is not allowed');
 };
 
 const isLoopback = (url: URL): boolean => url.protocol === 'http:' && loopbackHosts.includes(url.hostname);

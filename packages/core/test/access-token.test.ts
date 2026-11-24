@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { decodeJwt, decodeProtectedHeader, SignJWT } from 'jose';
 import { AccessToken, Keys, OAuthError } from '../src/index.ts';
-const { InvalidToken } = OAuthError;
+const { InvalidToken, TemporarilyUnavailable } = OAuthError;
 
 const issuer = 'https://op.example';
 const audience = 'https://rs.example';
@@ -37,14 +37,44 @@ describe('RFC 9068 s2 signing', () => {
 		const c = decodeJwt(jwt);
 		assert.equal(c.iss, issuer);
 		assert.ok(c.jti);
-		// jose reads the clock separately for iat and a relative exp, so they can straddle a second.
-		assert.ok([600, 601].includes((c.exp as number) - (c.iat as number)));
+		assert.equal((c.exp as number) - (c.iat as number), AccessToken.defaultLifetime);
 		assert.notEqual(c.jti, decodeJwt(await AccessToken.sign(claims, base)).jti);
 	});
 
 	it('round-trips through verify', async () => {
 		const v = await AccessToken.verify(await AccessToken.sign(claims, base), options);
 		assert.deepEqual([v.sub, v.client_id, v.scope], ['u', 'c', 'read write']);
+	});
+});
+
+describe('RFC 9068 s2 expiresIn', () => {
+	it('reads a number as seconds from now and defaults to 600', async () => {
+		assert.equal(AccessToken.defaultLifetime, 600);
+		const c = decodeJwt(await AccessToken.sign(claims, { ...base, expiresIn: 120 }));
+		assert.equal((c.exp as number) - (c.iat as number), 120);
+		assert.ok(Math.abs((c.exp as number) - (now() + 120)) <= 1);
+	});
+});
+
+describe('RFC 8725 s3.1 key failures (B1)', () => {
+	const header = { alg: 'ES256', typ: 'at+jwt' };
+
+	it('answers a forged header that mismatches the key with InvalidToken, never 503', async () => {
+		const rsa = await Keys.generate('RS256');
+		const jwt = await raw({ alg: 'RS256', typ: 'at+jwt' }, full(), rsa.privateKey);
+		await assert.rejects(AccessToken.verify(jwt, options), InvalidToken);
+		await assert.rejects(AccessToken.verify(jwt, { ...options, keys: await Keys.publicJwk(publicKey, { kid: 'k', alg: 'ES256' }) }), InvalidToken);
+	});
+
+	it('answers an unreachable remote key set with TemporarilyUnavailable', async () => {
+		const keys = Keys.remoteSet('http://127.0.0.1:1/jwks', { timeoutDuration: 500 });
+		await assert.rejects(AccessToken.verify(await raw(header, full()), { ...options, keys }), TemporarilyUnavailable);
+	});
+
+	it('keeps an unknown kid in a local set at InvalidToken', async () => {
+		const keys = Keys.localSet({ keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })] });
+		const jwt = await raw({ ...header, kid: 'other' }, full());
+		await assert.rejects(AccessToken.verify(jwt, { ...options, keys }), InvalidToken);
 	});
 });
 

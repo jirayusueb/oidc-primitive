@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { SignJWT, generateKeyPair } from 'jose';
-import { ClientAssertion, OAuthError } from '../src/index.ts';
-const { InvalidClient } = OAuthError;
+import { ClientAssertion, Keys, OAuthError } from '../src/index.ts';
+const { InvalidClient, TemporarilyUnavailable } = OAuthError;
 
 const issuer = 'https://as.example.com';
 const clientId = 'client-1';
@@ -52,6 +52,31 @@ describe('RFC 7523 s3 and RFC 10070 s4 client assertion', () => {
 			ClientAssertion.verify(jwt, { issuer, clientId, keys: publicKey, currentDate: new Date(Date.now() + 3_600_000) }),
 			InvalidClient,
 		);
+	});
+
+	it('uses the shared assertion algorithm list and the lowercase message', async () => {
+		assert.equal('algorithms' in ClientAssertion, false);
+		const error = await verify(await sign({ sub: 'other' })).catch((e: unknown) => e);
+		assert.ok(error instanceof InvalidClient);
+		assert.equal(error.description, 'client assertion is invalid');
+		const rsa = await Keys.generate('RS384');
+		const jwt = await sign({}, '5m', 'RS384', rsa.privateKey);
+		assert.equal((await ClientAssertion.verify(jwt, { issuer, clientId, keys: rsa.publicKey })).jti, 'j1');
+	});
+
+	it('verifies through a local JWK set', async () => {
+		const keys = Keys.localSet({ keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })] });
+		assert.equal((await ClientAssertion.verify(await sign({}), { issuer, clientId, keys })).jti, 'j1');
+	});
+
+	it('answers a forged alg that mismatches the key with InvalidClient, never 503 (B1)', async () => {
+		const rsa = await Keys.generate('RS256');
+		await rejects(sign({}, '5m', 'RS256', rsa.privateKey));
+	});
+
+	it('answers an unreachable remote key set with TemporarilyUnavailable', async () => {
+		const keys = Keys.remoteSet('http://127.0.0.1:1/jwks', { timeoutDuration: 500 });
+		await assert.rejects(ClientAssertion.verify(await sign({}), { issuer, clientId, keys }), TemporarilyUnavailable);
 	});
 
 	it('exposes the assertion type', () => {

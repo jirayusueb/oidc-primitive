@@ -20,10 +20,10 @@ export const extract = (headers: Headers): string | undefined => {
 export interface ChallengeOptions {
 	readonly realm?: string;
 	readonly error?: string;
-	readonly error_description?: string;
+	readonly errorDescription?: string;
 	readonly scope?: string;
 	/** RFC 9728 s5.1. */
-	readonly resource_metadata?: string;
+	readonly resourceMetadata?: string;
 }
 
 /** A `WWW-Authenticate: Bearer` value (RFC 6750 s3). Throws on characters outside s3. */
@@ -31,7 +31,7 @@ export const challenge = (options: ChallengeOptions = {}): string =>
 	formatChallenge('Bearer', {
 		realm: options.realm,
 		error: options.error,
-		error_description: options.error_description,
+		error_description: options.errorDescription,
 		scope: options.scope,
-		resource_metadata: options.resource_metadata,
+		resource_metadata: options.resourceMetadata,
 	});

@@ -22,7 +22,7 @@ export const challenge = async (verifier: string): Promise<string> => {
  * Check the authorization request's challenge method. Only S256 is accepted
  * (RFC 9700 s2.1.1, OAuth 2.1 draft-17 s4.1.1); an absent method means `plain`.
  */
-export const checkMethod = (method: string | null | undefined): void => {
+export const validateMethod = (method: string | null | undefined): void => {
 	if (method !== 'S256') throw new InvalidRequest('code_challenge_method must be S256');
 };
 

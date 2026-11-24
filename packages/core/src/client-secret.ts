@@ -6,6 +6,8 @@ export interface BasicCredentials {
 	readonly clientSecret: Redacted<string>;
 }
 
+const malformed = (): InvalidClient => new InvalidClient('malformed Basic credentials', { scheme: 'Basic' });
+
 /** application/x-www-form-urlencoded decoding (RFC 6749 s2.3.1, Appendix B). */
 const formDecode = (value: string): string => decodeURIComponent(value.replaceAll('+', ' '));
 
@@ -17,23 +19,23 @@ export const parseBasic = (header: string | null | undefined): BasicCredentials 
 	if (!header) return undefined;
 	const [scheme, encoded, ...rest] = header.trim().split(/\s+/);
 	if (scheme?.toLowerCase() !== 'basic') return undefined;
-	if (!encoded || rest.length > 0) throw new InvalidClient('malformed Basic credentials');
+	if (!encoded || rest.length > 0) throw malformed();
 	let decoded: string;
 	try {
 		decoded = new TextDecoder('utf-8', { fatal: true }).decode(
 			Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0)),
 		);
 	} catch {
-		throw new InvalidClient('malformed Basic credentials');
+		throw malformed();
 	}
 	const colon = decoded.indexOf(':');
-	if (colon <= 0) throw new InvalidClient('malformed Basic credentials');
+	if (colon <= 0) throw malformed();
 	try {
 		return {
 			clientId: formDecode(decoded.slice(0, colon)),
 			clientSecret: Redacted.make(formDecode(decoded.slice(colon + 1))),
 		};
 	} catch {
-		throw new InvalidClient('malformed Basic credentials');
+		throw malformed();
 	}
 };

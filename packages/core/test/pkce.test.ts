@@ -30,11 +30,23 @@ describe('RFC 7636 s4.1 verifier syntax', () => {
 	});
 });
 
+describe('RFC 7636 s4.2 challenge syntax', () => {
+	it('accepts exactly 43 base64url characters', () => {
+		assert.equal(Pkce.isChallenge('a'.repeat(43)), true);
+		assert.equal(Pkce.isChallenge('a'.repeat(42)), false);
+		assert.equal(Pkce.isChallenge('a'.repeat(44)), false);
+		assert.equal(Pkce.isChallenge(`${'a'.repeat(42)}+`), false);
+		assert.equal(Pkce.isChallenge(`${'a'.repeat(42)}=`), false);
+		assert.equal(Pkce.isChallenge(`${'a'.repeat(41)}-_`), true);
+		assert.equal(Pkce.isChallenge(undefined), false);
+	});
+});
+
 describe('RFC 9700 s2.1.1 S256 only', () => {
 	it('rejects plain and a missing method', () => {
-		assert.throws(() => Pkce.checkMethod('plain'), OAuthError.InvalidRequest);
-		assert.throws(() => Pkce.checkMethod(undefined), OAuthError.InvalidRequest);
-		Pkce.checkMethod('S256');
+		assert.throws(() => Pkce.validateMethod('plain'), OAuthError.InvalidRequest);
+		assert.throws(() => Pkce.validateMethod(undefined), OAuthError.InvalidRequest);
+		Pkce.validateMethod('S256');
 	});
 });
 

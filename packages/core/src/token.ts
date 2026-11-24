@@ -1,6 +1,7 @@
 import { base64url } from 'jose';
 import { digestEqual, sha256Base64url } from './internal/crypto.ts';
-import { Redacted, unwrap } from './redacted.ts';
+import { unwrap } from './internal/unwrap.ts';
+import { Redacted } from './redacted.ts';
 
 /**
  * Opaque credentials: authorization codes, refresh tokens, opaque access tokens and

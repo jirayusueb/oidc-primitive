@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { calculateJwkThumbprint, exportJWK } from 'jose';
-import { Keys } from '../src/index.ts';
+import { AccessToken, Keys } from '../src/index.ts';
 
 describe('RFC 7517 s5 JWK Set publishing', () => {
 	it('publishes public members with kid, alg and use', async () => {
@@ -32,5 +32,28 @@ describe('RFC 7638 thumbprint', () => {
 		const { publicKey } = await Keys.generate('ES256');
 		const jwk = await exportJWK(publicKey);
 		assert.equal(await Keys.thumbprint(jwk), await calculateJwkThumbprint(jwk));
+	});
+});
+
+describe('RFC 7517 s5 local JWK Set resolver', () => {
+	it('verifies a token through the set and picks the key by kid', async () => {
+		const a = await Keys.generate('ES256');
+		const b = await Keys.generate('ES256');
+		const keys = Keys.localSet({
+			keys: [await Keys.publicJwk(a.publicKey, { kid: 'a', alg: 'ES256' }), await Keys.publicJwk(b.publicKey, { kid: 'b', alg: 'ES256' })],
+		});
+		const options = { issuer: 'https://op.example', audience: 'https://rs.example', keys };
+		const claims = { sub: 'u', aud: options.audience, client_id: 'c' };
+		const signWith = (key: CryptoKey, kid: string): Promise<string> =>
+			AccessToken.sign(claims, { issuer: options.issuer, key, kid, alg: 'ES256' });
+		assert.equal((await AccessToken.verify(await signWith(b.privateKey, 'b'), options)).sub, 'u');
+		await assert.rejects(AccessToken.verify(await signWith(b.privateKey, 'a'), options));
+		await assert.rejects(AccessToken.verify(await signWith(b.privateKey, 'zzz'), options));
+	});
+
+	it('freezes the algorithm lists', () => {
+		assert.deepEqual([...Keys.tokenAlgorithms], ['ES256', 'EdDSA', 'PS256', 'RS256']);
+		assert.equal(Keys.assertionAlgorithms.length, 10);
+		assert.equal('allowedAlgorithms' in Keys, false);
 	});
 });

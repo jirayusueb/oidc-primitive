@@ -46,8 +46,16 @@ describe('OIDC Core s2 azp and claims', () => {
 	it('sets iss, iat, exp and passes custom claims through', async () => {
 		const c = decodeJwt(await IdToken.sign({ sub: 'u', aud: 'a', nonce: 'n', auth_time: 5, custom: 1 }, base));
 		assert.equal(c.iss, issuer);
-		assert.equal((c.exp as number) - (c.iat as number), 600);
+		assert.equal((c.exp as number) - (c.iat as number), IdToken.defaultLifetime);
+		assert.equal(IdToken.defaultLifetime, 600);
 		assert.deepEqual([c.nonce, c.auth_time, c.custom], ['n', 5, 1]);
+	});
+});
+
+describe('OIDC Core s3.1.3.7 expiresIn', () => {
+	it('reads a number as seconds from now', async () => {
+		const c = decodeJwt(await IdToken.sign({ sub: 'u', aud: 'a' }, { ...base, expiresIn: 90 }));
+		assert.equal((c.exp as number) - (c.iat as number), 90);
 	});
 });
 
@@ -67,6 +75,44 @@ describe('OIDC Core s3.1.2.1 id_token_hint', () => {
 			.setIssuedAt(1000)
 			.setExpirationTime(2000)
 			.sign(privateKey);
+
+	it('returns typed claims and rejects a non-string sub', async () => {
+		const claims = await IdToken.verify(await IdToken.sign({ sub: 'u', aud: 'c' }, base), options);
+		const typed: [string, string, string | string[], number, number] = [claims.iss, claims.sub, claims.aud, claims.iat, claims.exp];
+		assert.equal(typed[0], issuer);
+		const jwt = await new SignJWT({ sub: 5 as unknown as string })
+			.setProtectedHeader({ alg: 'ES256' })
+			.setIssuer(issuer)
+			.setAudience('c')
+			.setIssuedAt()
+			.setExpirationTime('10m')
+			.sign(privateKey);
+		await assert.rejects(IdToken.verify(jwt, options), InvalidRequest);
+	});
+
+	it('applies a 30 s clock tolerance, configurable', async () => {
+		const near = await new SignJWT({ sub: 'u' })
+			.setProtectedHeader({ alg: 'ES256' })
+			.setIssuer(issuer)
+			.setAudience('c')
+			.setIssuedAt(Math.floor(Date.now() / 1000) - 600)
+			.setExpirationTime(Math.floor(Date.now() / 1000) - 20)
+			.sign(privateKey);
+		assert.equal((await IdToken.verify(near, options)).sub, 'u');
+		await assert.rejects(IdToken.verify(near, { ...options, clockTolerance: 5 }), InvalidRequest);
+	});
+
+	it('answers a key that mismatches the header alg with InvalidRequest', async () => {
+		const rsa = await Keys.generate('RS256');
+		const jwt = await new SignJWT({ sub: 'u' })
+			.setProtectedHeader({ alg: 'RS256' })
+			.setIssuer(issuer)
+			.setAudience('c')
+			.setIssuedAt()
+			.setExpirationTime('10m')
+			.sign(rsa.privateKey);
+		await assert.rejects(IdToken.verify(jwt, options), InvalidRequest);
+	});
 
 	it('rejects an expired token unless allowExpired', async () => {
 		const jwt = await expired();

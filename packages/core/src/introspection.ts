@@ -1,5 +1,3 @@
-import { json } from './oauth-response.ts';
-
 export interface Claims {
 	readonly scope?: string;
 	readonly client_id?: string;
@@ -15,15 +13,20 @@ export interface Claims {
 	readonly [claim: string]: unknown;
 }
 
+export interface ActiveResponse extends Claims {
+	readonly active: true;
+}
+
+export interface InactiveResponse {
+	readonly active: false;
+}
+
 /** RFC 7662 s2.2 response for a live token; extra claims pass through, `active` cannot be overridden. */
-export const active = (claims: Claims): Record<string, unknown> => {
+export const active = (claims: Claims): ActiveResponse => {
 	const out: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(claims)) if (value !== undefined) out[key] = value;
-	return { ...out, active: true };
+	return { ...out, active: true } as ActiveResponse;
 };
 
 /** RFC 7662 s2.2: an unknown, expired or foreign token reveals nothing else. */
-export const inactive = (): { active: false } => ({ active: false });
-
-/** No-store JSON response. */
-export const response = (body: Record<string, unknown>): Response => json(body);
+export const inactive = (): InactiveResponse => ({ active: false });

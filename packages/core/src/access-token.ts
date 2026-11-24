@@ -1,8 +1,8 @@
 import { errors, jwtVerify, SignJWT } from 'jose';
-import type { JWTPayload, JWTVerifyGetKey } from 'jose';
-import { allowedAlgorithms } from './keys.ts';
+import type { JWTPayload } from 'jose';
+import { tokenAlgorithms } from './keys.ts';
 import type { VerifyKey } from './keys.ts';
-import { isKeyFetchFailure } from './internal/key-errors.ts';
+import { guardKeys, isKeyFetchFailure } from './internal/key-errors.ts';
 import { InvalidToken, OAuthError, TemporarilyUnavailable } from './oauth-error.ts';
 
 export interface Claims {
@@ -24,7 +24,7 @@ export interface SignOptions {
 	readonly key: CryptoKey;
 	readonly kid: string;
 	readonly alg: string;
-	/** A jose time span (default `"10m"`) or an absolute epoch-seconds number. */
+	/** Seconds from now, or a jose time span such as `"10m"`. Default `defaultLifetime`. */
 	readonly expiresIn?: string | number;
 }
 
@@ -51,25 +51,31 @@ export interface VerifiedClaims extends JWTPayload {
 	readonly cnf?: Record<string, unknown>;
 }
 
+/** Default access token lifetime in seconds. */
+export const defaultLifetime = 600;
+
 /** RFC 9068 JWT access token. The library sets `typ: at+jwt`, `iss`, `iat`, `exp` and `jti`. */
-export const sign = (claims: Claims, options: SignOptions): Promise<string> =>
-	new SignJWT({ ...claims })
+export const sign = (claims: Claims, options: SignOptions): Promise<string> => {
+	const iat = Math.floor(Date.now() / 1000);
+	const expiresIn = options.expiresIn ?? defaultLifetime;
+	return new SignJWT({ ...claims })
 		.setProtectedHeader({ alg: options.alg, kid: options.kid, typ: 'at+jwt' })
 		.setIssuer(options.issuer)
 		.setJti(crypto.randomUUID())
-		.setIssuedAt()
-		.setExpirationTime(options.expiresIn ?? '10m')
+		.setIssuedAt(iat)
+		.setExpirationTime(typeof expiresIn === 'number' ? iat + expiresIn : expiresIn)
 		.sign(options.key);
+};
 
 /** RFC 9068 s4 verification. Every failure throws `InvalidToken`, never echoing the token. */
 export const verify = async (token: string, options: VerifyOptions): Promise<VerifiedClaims> => {
-	const algorithms = options.algorithms ?? allowedAlgorithms;
-	if (algorithms.some((alg) => !allowedAlgorithms.includes(alg))) {
+	const algorithms = options.algorithms ?? tokenAlgorithms;
+	if (algorithms.some((alg) => !tokenAlgorithms.includes(alg))) {
 		throw new TypeError('AccessToken.verify algorithms must be within the allow-list');
 	}
 	let payload: JWTPayload;
 	try {
-		({ payload } = await jwtVerify(token, options.keys as JWTVerifyGetKey, {
+		({ payload } = await jwtVerify(token, guardKeys(options.keys), {
 			issuer: options.issuer,
 			audience: options.audience,
 			typ: 'at+jwt',

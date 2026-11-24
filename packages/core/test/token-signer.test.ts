@@ -11,7 +11,7 @@ describe('RFC 9068 and OIDC Core token signing with a bound key', () => {
 		const jwt = await signer.accessToken({ sub: 'u', aud: 'https://rs', client_id: 'c' }, { expiresIn: '1m' });
 		assert.equal(decodeProtectedHeader(jwt).typ, 'at+jwt');
 		const v = await AccessToken.verify(jwt, { issuer: 'https://op.example', audience: 'https://rs', keys: publicKey });
-		assert.ok([60, 61].includes(v.exp - v.iat)); // jose reads the clock twice
+		assert.ok([60, 61].includes(v.exp - v.iat)); // a time span string is read by jose against its own clock
 	});
 
 	it('takes clientId and accessToken per call, so one signer serves every client', async () => {

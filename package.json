@@ -19,6 +19,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "bunup",
+		"check-dts": "bun scripts/check-dts.ts",
 		"conformance": "bun run --filter conformance run",
 		"dev": "bunup --watch",
 		"docs:dev": "bun run --filter docs dev",

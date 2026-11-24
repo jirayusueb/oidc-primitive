@@ -1,11 +1,10 @@
 import { InvalidTarget } from './oauth-error.ts';
 
 /** RFC 8707 s2: an absolute URI without a fragment. */
-export const validate = (uri: string): string => {
+export const validate = (uri: string): void => {
 	if (!URL.canParse(uri) || uri.includes('#')) {
 		throw new InvalidTarget('resource must be an absolute URI without a fragment');
 	}
-	return uri;
 };
 
 /**
@@ -17,5 +16,7 @@ export const audience = (resources: ReadonlyArray<string>, issuer: string): stri
 	const unique = [...new Set(resources)];
 	if (unique.length === 0) return issuer;
 	if (unique.length > 1) throw new InvalidTarget('only one resource is supported per request');
-	return validate(unique[0] as string);
+	const [resource] = unique as [string];
+	validate(resource);
+	return resource;
 };

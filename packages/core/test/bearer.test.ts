@@ -27,13 +27,20 @@ describe('RFC 6750 s2.1 Authorization header', () => {
 describe('RFC 6750 s3 challenge', () => {
 	it('formats quoted params', () => {
 		assert.equal(
-			Bearer.challenge({ realm: 'api', error: 'invalid_token', resource_metadata: 'https://rs/.well-known/oauth-protected-resource' }),
+			Bearer.challenge({ realm: 'api', error: 'invalid_token', resourceMetadata: 'https://rs/.well-known/oauth-protected-resource' }),
 			'Bearer realm="api", error="invalid_token", resource_metadata="https://rs/.well-known/oauth-protected-resource"',
 		);
 		assert.equal(Bearer.challenge(), 'Bearer');
 	});
 
+	it('serializes scope and error_description to wire names', () => {
+		assert.equal(
+			Bearer.challenge({ error: 'insufficient_scope', errorDescription: 'need more', scope: 'a b' }),
+			'Bearer error="insufficient_scope", error_description="need more", scope="a b"',
+		);
+	});
+
 	it('rejects characters outside s3', () => {
-		assert.throws(() => Bearer.challenge({ error_description: 'a"b' }), TypeError);
+		assert.throws(() => Bearer.challenge({ errorDescription: 'a"b' }), TypeError);
 	});
 });

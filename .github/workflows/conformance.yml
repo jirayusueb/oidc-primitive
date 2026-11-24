@@ -1,0 +1,39 @@
+name: Conformance
+
+# OpenID Foundation conformance suite (pinned in conformance/) against examples/bun-op.
+on:
+  pull_request:
+    paths:
+      - 'packages/core/src/**'
+      - 'examples/bun-op/**'
+      - 'conformance/**'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Basic OP and Config OP plans
+        run: bun run conformance
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-results
+          path: conformance/results/

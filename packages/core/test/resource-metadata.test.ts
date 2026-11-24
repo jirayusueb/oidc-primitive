@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { ResourceMetadata } from '../src/index.ts';
 
-describe('RFC 9728 protected resource metadata', () => {
+describe('RFC 9728 s2 protected resource metadata', () => {
 	it('builds the document with header bearer default', () => {
 		assert.deepEqual(
 			ResourceMetadata.make({

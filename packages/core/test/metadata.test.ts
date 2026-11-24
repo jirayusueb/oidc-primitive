@@ -6,7 +6,7 @@ const endpoints = { authorization: 'https://as.example/authorize', token: 'https
 
 describe('RFC 8414 s2 and OIDC Discovery s3 metadata', () => {
 	it('applies secure defaults and omits unset endpoints', () => {
-		const doc = Metadata.authorizationServer({ issuer: 'https://as.example', endpoints, scopes: ['openid'] });
+		const doc = Metadata.authorizationServer({ issuer: 'https://as.example', endpoints, scopesSupported: ['openid'] });
 		assert.equal(doc.issuer, 'https://as.example');
 		assert.equal(doc.token_endpoint, endpoints.token);
 		assert.equal(doc.jwks_uri, endpoints.jwks);
@@ -18,12 +18,20 @@ describe('RFC 8414 s2 and OIDC Discovery s3 metadata', () => {
 		assert.deepEqual(doc.token_endpoint_auth_methods_supported, ['client_secret_basic', 'client_secret_post', 'private_key_jwt']);
 		assert.deepEqual(doc.id_token_signing_alg_values_supported, ['RS256']);
 		assert.deepEqual(doc.subject_types_supported, ['public']);
-		assert.equal((doc.token_endpoint_auth_signing_alg_values_supported as string[]).includes('HS256'), false);
+		assert.equal(doc.token_endpoint_auth_signing_alg_values_supported?.includes('HS256'), false);
 		assert.equal('userinfo_endpoint' in doc, false);
 	});
 
 	it('rejects symmetric token endpoint signing algs', () => {
-		assert.throws(() => Metadata.authorizationServer({ issuer: 'https://as.example', endpoints, tokenEndpointAuthSigningAlgs: ['HS256'] }), TypeError);
+		assert.throws(() => Metadata.authorizationServer({ issuer: 'https://as.example', endpoints, tokenEndpointAuthSigningAlgValuesSupported: ['HS256'] }), TypeError);
+	});
+
+	it('requires RS256 in ID token algs unless allowWithoutRs256 is set (OIDC Discovery s3)', () => {
+		const base = { issuer: 'https://as.example', endpoints };
+		assert.throws(() => Metadata.authorizationServer({ ...base, idTokenSigningAlgValuesSupported: ['ES256'] }), TypeError);
+		const doc = Metadata.authorizationServer({ ...base, idTokenSigningAlgValuesSupported: ['ES256'], allowWithoutRs256: true });
+		assert.deepEqual(doc.id_token_signing_alg_values_supported, ['ES256']);
+		Metadata.authorizationServer({ ...base, idTokenSigningAlgValuesSupported: ['ES256', 'RS256'] });
 	});
 
 	it('validates the issuer', () => {

@@ -1,7 +1,8 @@
-import { challenge, json, noStoreHeaders, redirect } from './internal/http.ts';
+import { challenge, challengeValue, json, noStoreHeaders, redirect } from './internal/http.ts';
 
-/** Error codes from RFC 6749 s4.1.2.1 and s5.2, RFC 6750 s3.1, RFC 8707 s2 and OIDC Core s3.1.2.6. */
+/** Error codes from RFC 6749 s4.1.2.1 and s5.2, RFC 6750 s3.1, RFC 7591 s3.2.2, RFC 8707 s2 and OIDC Core s3.1.2.6. */
 export type Code =
+	| 'invalid_redirect_uri'
 	| 'invalid_request'
 	| 'invalid_client'
 	| 'invalid_grant'
@@ -51,7 +52,7 @@ export class OAuthError extends Error {
 		this.description = options.description;
 	}
 
-	toJSON(): { error: string; error_description?: string } {
+	toJSON(): { error?: string; error_description?: string } {
 		return this.description === undefined
 			? { error: this.code }
 			: { error: this.code, error_description: this.description };
@@ -72,24 +73,32 @@ export class OAuthError extends Error {
 	}
 }
 
-/** RFC 6750 s3 auth-param characters; a description outside them is dropped from the header, not thrown. */
-const challengeSafe = /^[\x20\x21\x23-\x5B\x5D-\x7E]*$/;
-
 const bearer = (error: OAuthError, extra: Record<string, string | undefined>): Response => {
 	const headers = noStoreHeaders();
-	const description = error.description !== undefined && challengeSafe.test(error.description) ? error.description : undefined;
+	const description = error.description !== undefined && challengeValue.test(error.description) ? error.description : undefined;
 	headers.set('WWW-Authenticate', challenge('Bearer', { error: error.code, error_description: description, ...extra }));
 	return json(error.toJSON(), error.status, headers);
 };
 
 /**
  * The request carried no bearer token at all. RFC 6750 s3.1: answer 401 with a bare
- * `Bearer` challenge and no error code.
+ * `Bearer` challenge and no error code. It is not an `InvalidToken`: a host that catches
+ * `InvalidToken` must also catch `MissingToken`, or catch `OAuthError`.
  */
 export class MissingToken extends OAuthError {
 	override readonly _tag = 'MissingToken' as const;
 	constructor() {
 		super('invalid_token', { status: 401 });
+	}
+
+	/** No `error` member: this case has no error code (RFC 6750 s3.1). */
+	override toJSON(): { error?: string; error_description?: string } {
+		return {};
+	}
+
+	/** Not valid for a redirect: a missing token is a resource-server condition. */
+	override toRedirect(): Response {
+		throw new TypeError('MissingToken is not valid for a redirect');
 	}
 
 	override toResponse(): Response {
@@ -106,17 +115,30 @@ export class InvalidRequest extends OAuthError {
 	}
 }
 
-/** RFC 6749 s5.2: 401 with a `WWW-Authenticate` challenge for the scheme the client used. */
+/**
+ * RFC 6749 s5.2: 401. Pass `{ scheme: 'Basic' }` when the client authenticated with the
+ * `Authorization` header, and the response carries `WWW-Authenticate: Basic realm="token"`.
+ */
 export class InvalidClient extends OAuthError {
 	override readonly _tag = 'InvalidClient' as const;
-	constructor(description?: string) {
+	readonly scheme: 'Basic' | undefined;
+	constructor(description?: string, options: { readonly scheme?: 'Basic' } = {}) {
 		super('invalid_client', { status: 401, description });
+		this.scheme = options.scheme;
 	}
 
 	override toResponse(): Response {
 		const response = super.toResponse();
-		response.headers.set('WWW-Authenticate', 'Basic realm="token"');
+		if (this.scheme === 'Basic') response.headers.set('WWW-Authenticate', 'Basic realm="token"');
 		return response;
+	}
+}
+
+/** RFC 7591 s3.2.2: a redirect URI is not acceptable at client registration. */
+export class InvalidRedirectUri extends OAuthError {
+	override readonly _tag = 'InvalidRedirectUri' as const;
+	constructor(description?: string) {
+		super('invalid_redirect_uri', { description });
 	}
 }
 
@@ -258,6 +280,36 @@ export class TemporarilyUnavailable extends OAuthError {
 	}
 }
 
-/** An error with any code, for extension specs (for example `use_dpop_nonce`). */
-export const make = (code: Code | (string & {}), options?: Options): OAuthError =>
-	new OAuthError(code, options);
+const byCode: Record<string, (description?: string) => OAuthError> = {
+	invalid_redirect_uri: (d) => new InvalidRedirectUri(d),
+	invalid_request: (d) => new InvalidRequest(d),
+	invalid_client: (d) => new InvalidClient(d),
+	invalid_grant: (d) => new InvalidGrant(d),
+	unauthorized_client: (d) => new UnauthorizedClient(d),
+	unsupported_grant_type: (d) => new UnsupportedGrantType(d),
+	unsupported_response_type: (d) => new UnsupportedResponseType(d),
+	invalid_scope: (d) => new InvalidScope(d),
+	invalid_target: (d) => new InvalidTarget(d),
+	access_denied: (d) => new AccessDenied(d),
+	login_required: (d) => new LoginRequired(d),
+	consent_required: (d) => new ConsentRequired(d),
+	interaction_required: (d) => new InteractionRequired(d),
+	account_selection_required: (d) => new AccountSelectionRequired(d),
+	request_not_supported: (d) => new RequestNotSupported(d),
+	request_uri_not_supported: (d) => new RequestUriNotSupported(d),
+	registration_not_supported: (d) => new RegistrationNotSupported(d),
+	invalid_token: (d) => new InvalidToken(d),
+	insufficient_scope: (d) => new InsufficientScope(undefined, d),
+	server_error: (d) => new ServerError(d),
+	temporarily_unavailable: (d) => new TemporarilyUnavailable(d),
+};
+
+/**
+ * The error for `code`. A registered `Code` returns its subclass with the status and challenge
+ * the RFC defines (`options.status` is ignored for it); any other code, for extension specs
+ * such as `use_dpop_nonce`, builds a base `OAuthError` honoring `options`.
+ */
+export const make = (code: Code | (string & {}), options?: Options): OAuthError => {
+	const known = Object.hasOwn(byCode, code) ? byCode[code] : undefined;
+	return known ? known(options?.description) : new OAuthError(code, options);
+};

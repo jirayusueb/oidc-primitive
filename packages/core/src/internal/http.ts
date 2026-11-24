@@ -1,9 +1,10 @@
-import { Redacted, unwrap } from '../redacted.ts';
+import { Redacted } from '../redacted.ts';
+import { unwrap } from './unwrap.ts';
 
 export type ParamValue = string | number | Redacted<string> | undefined;
 
 /** RFC 6750 s3: auth-param values allow %x20-21 / %x23-5B / %x5D-7E. */
-const challengeValue = /^[\x20\x21\x23-\x5B\x5D-\x7E]*$/;
+export const challengeValue: RegExp = /^[\x20\x21\x23-\x5B\x5D-\x7E]*$/;
 
 export const noStoreHeaders = (): Headers =>
 	new Headers({

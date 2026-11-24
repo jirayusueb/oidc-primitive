@@ -37,7 +37,3 @@ export const make = <T>(value: T): Redacted<T> => Redacted.make(value);
 
 /** Read the wrapped credential. */
 export const value = <T>(redacted: Redacted<T>): T => Redacted.value(redacted);
-
-/** Unwrap when `input` is `Redacted`, otherwise return it unchanged. */
-export const unwrap = <T>(input: T | Redacted<T>): T =>
-	input instanceof Redacted ? Redacted.value(input) : input;

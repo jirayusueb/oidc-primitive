@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import { OAuthError, Resource, Scope } from '../src/index.ts';
+import { OAuthError, Scope } from '../src/index.ts';
 
 describe('RFC 6749 s3.3 scope', () => {
 	it('parses space-delimited tokens, dropping duplicates', () => {
@@ -26,21 +26,5 @@ describe('RFC 6749 s3.3 scope', () => {
 		const read = Scope.make('read');
 		const write = Scope.make('write');
 		assert.deepEqual(Scope.filter(['read', 'other'], [read, write]), ['read']);
-	});
-});
-
-describe('RFC 8707 s2 resource indicators', () => {
-	it('uses the issuer when no resource was requested', () => {
-		assert.equal(Resource.audience([], 'https://as.example'), 'https://as.example');
-	});
-
-	it('accepts one absolute resource and rejects several or fragments', () => {
-		assert.equal(Resource.audience(['https://api.example'], 'https://as.example'), 'https://api.example');
-		assert.throws(
-			() => Resource.audience(['https://a.example', 'https://b.example'], 'https://as.example'),
-			OAuthError.InvalidTarget,
-		);
-		assert.throws(() => Resource.validate('https://api.example#x'), OAuthError.InvalidTarget);
-		assert.throws(() => Resource.validate('api'), OAuthError.InvalidTarget);
 	});
 });

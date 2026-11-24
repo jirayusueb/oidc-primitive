@@ -1,8 +1,22 @@
 import { calculateJwkThumbprint, createLocalJWKSet, createRemoteJWKSet, exportJWK, generateKeyPair } from 'jose';
 import type { JWK, JWTVerifyGetKey, RemoteJWKSetOptions } from 'jose';
 
-/** D9 algorithm allow-list for verifying tokens. */
-export const allowedAlgorithms: readonly string[] = ['ES256', 'EdDSA', 'PS256', 'RS256'];
+/** Algorithms accepted for tokens this library signs and verifies (design D9). Frozen: nothing can widen it. */
+export const tokenAlgorithms: readonly string[] = Object.freeze(['ES256', 'EdDSA', 'PS256', 'RS256']);
+
+/** Asymmetric algorithms accepted for client assertions and advertised in metadata (RFC 8725 s3.1). */
+export const assertionAlgorithms: readonly string[] = Object.freeze([
+	'ES256',
+	'ES384',
+	'ES512',
+	'EdDSA',
+	'PS256',
+	'PS384',
+	'PS512',
+	'RS256',
+	'RS384',
+	'RS512',
+]);
 
 export interface KeyPair {
 	readonly publicKey: CryptoKey;
