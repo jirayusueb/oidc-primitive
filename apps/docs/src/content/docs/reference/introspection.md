@@ -30,10 +30,26 @@ interface Claims {
 }
 ```
 
+## ActiveResponse
+
+```ts title="signature"
+interface ActiveResponse extends Claims {
+  readonly active: true;
+}
+```
+
+## InactiveResponse
+
+```ts title="signature"
+interface InactiveResponse {
+  readonly active: false;
+}
+```
+
 ## active
 
 ```ts title="signature"
-const active: (claims: Claims) => Record<string, unknown>;
+const active: (claims: Claims) => ActiveResponse;
 ```
 
 Returns `claims` with `undefined` values dropped and `active: true` added. Extra claims pass through. A claim named `active` is overwritten, so it cannot be overridden.
@@ -41,18 +57,10 @@ Returns `claims` with `undefined` values dropped and `active: true` added. Extra
 ## inactive
 
 ```ts title="signature"
-const inactive: () => { active: false };
+const inactive: () => InactiveResponse;
 ```
 
 Returns `{ active: false }`. Use it for unknown, expired, revoked or foreign tokens so nothing else leaks.
-
-## response
-
-```ts title="signature"
-const response: (body: Record<string, unknown>) => Response;
-```
-
-Returns a 200 JSON response with `Cache-Control: no-store`. It uses [`OAuthResponse.json`](/reference/oauth-response/#json).
 
 ```ts
 const body = Introspection.active({
@@ -62,12 +70,14 @@ const body = Introspection.active({
   exp: 1893456000,
   token_type: 'Bearer',
 });
-return Introspection.response(body);
+return OAuthResponse.json(body);
 ```
 
 ```ts
-return Introspection.response(Introspection.inactive());
+return OAuthResponse.json(Introspection.inactive());
 ```
+
+Return either body with [`OAuthResponse.json`](/reference/oauth-response/#json), which sets `Cache-Control: no-store`, or with your own `Response`.
 
 ## Spec
 

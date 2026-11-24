@@ -19,21 +19,13 @@ const assertionType: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer';
 
 The expected `client_assertion_type` request parameter value. Compare it yourself before calling `verify`.
 
-## algorithms
-
-```ts title="signature"
-const algorithms: readonly string[];
-```
-
-Accepted signing algorithms: `ES256`, `EdDSA`, `PS256`, `RS256`, `ES384`, `ES512`, `PS384`, `PS512`, `RS384`, `RS512`. `HS*` and `none` are never accepted.
-
 ## VerifyOptions
 
 ```ts title="signature"
 interface VerifyOptions {
   readonly issuer: string;
   readonly clientId: string;
-  readonly keys: CryptoKey | JWTVerifyGetKey;
+  readonly keys: VerifyKey;
   readonly clockTolerance?: number;
   readonly maxLifetime?: number;
   readonly currentDate?: Date;
@@ -44,7 +36,7 @@ interface VerifyOptions {
 | --- | --- | --- | --- |
 | `issuer` | `string` | none | Your issuer identifier. Required `aud`. |
 | `clientId` | `string` | none | Required `iss` and `sub`. |
-| `keys` | `CryptoKey \| JWTVerifyGetKey` | none | The client's public key, or a resolver such as `Keys.localSet` or `Keys.remoteSet`. |
+| `keys` | [`Keys.VerifyKey`](/reference/keys/#verifykey) | none | The client's public key, or a resolver from `Keys.localSet` (registered `jwks`) or `Keys.remoteSet` (`jwks_uri`). |
 | `clockTolerance` | `number` | `30` | Seconds of clock skew. |
 | `maxLifetime` | `number` | `600` | Maximum seconds `exp` may lie ahead of now. |
 | `currentDate` | `Date` | now | Clock override, for tests. |
@@ -65,11 +57,11 @@ interface Verified {
 const verify: (jwt: string, options: VerifyOptions) => Promise<Verified>;
 ```
 
-Requires `iss`, `sub`, `aud`, `exp` and `jti`. `iss` and `sub` must equal `clientId`. `aud` must be the issuer string, or a one-element array holding it. `jti` must be a non-empty string.
+Requires `iss`, `sub`, `aud`, `exp` and `jti`. `iss` and `sub` must equal `clientId`. `aud` must be the issuer string, or a one-element array holding it. `jti` must be a non-empty string. The signature must use one of `Keys.assertionAlgorithms`: `ES256`, `ES384`, `ES512`, `EdDSA`, `PS256`, `PS384`, `PS512`, `RS256`, `RS384`, `RS512`. `HS*` and `none` are never accepted.
 
 | Throws | When |
 | --- | --- |
-| `OAuthError.InvalidClient` | Any check fails (`Client assertion is invalid`). The reason is not revealed. |
+| `OAuthError.InvalidClient` | Any check fails (`client assertion is invalid`). The reason is not revealed. |
 | `OAuthError.TemporarilyUnavailable` | The client's keys could not be fetched (HTTP 503). |
 
 ```ts

@@ -54,18 +54,6 @@ Reads the wrapped credential. Call it only where the raw value must leave the pr
 const raw: string = Redacted.value(Redacted.make('s3cr3t'));
 ```
 
-## unwrap
-
-```ts title="signature"
-const unwrap: <T>(input: T | Redacted<T>) => T;
-```
-
-Returns the wrapped value when `input` is `Redacted`, otherwise returns `input` unchanged.
-
-```ts
-const raw: string = Redacted.unwrap(Redacted.make('s3cr3t'));
-```
-
 ## Spec
 
 None. The behavior is a library safeguard. Its tests check that `String`, `JSON.stringify` and console inspection never reveal the value.

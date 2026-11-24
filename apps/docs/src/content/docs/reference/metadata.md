@@ -34,13 +34,14 @@ Absolute URLs. `authorization`, `token` and `jwks` are required.
 interface AuthorizationServerOptions {
   readonly issuer: string;
   readonly endpoints: Endpoints;
-  readonly scopes?: readonly string[];
-  readonly grantTypes?: readonly string[];
-  readonly tokenEndpointAuthMethods?: readonly string[];
-  readonly tokenEndpointAuthSigningAlgs?: readonly string[];
-  readonly idTokenSigningAlgs?: readonly string[];
-  readonly claims?: readonly string[];
-  readonly subjectTypes?: readonly string[];
+  readonly scopesSupported?: readonly string[];
+  readonly grantTypesSupported?: readonly string[];
+  readonly tokenEndpointAuthMethodsSupported?: readonly string[];
+  readonly tokenEndpointAuthSigningAlgValuesSupported?: readonly string[];
+  readonly idTokenSigningAlgValuesSupported?: readonly string[];
+  readonly allowWithoutRs256?: boolean;
+  readonly claimsSupported?: readonly string[];
+  readonly subjectTypesSupported?: readonly string[];
   readonly claimsParameterSupported?: boolean;
 }
 ```
@@ -49,21 +50,54 @@ interface AuthorizationServerOptions {
 | --- | --- | --- | --- |
 | `issuer` | `string` | none | `issuer` |
 | `endpoints` | `Endpoints` | none | `authorization_endpoint`, `token_endpoint`, `jwks_uri`, and the optional endpoints |
-| `scopes` | `readonly string[]` | omitted | `scopes_supported` |
-| `grantTypes` | `readonly string[]` | `['authorization_code', 'refresh_token']` | `grant_types_supported` |
-| `tokenEndpointAuthMethods` | `readonly string[]` | `['client_secret_basic', 'client_secret_post', 'private_key_jwt']` | `token_endpoint_auth_methods_supported` |
-| `tokenEndpointAuthSigningAlgs` | `readonly string[]` | `ES256`, `EdDSA`, `PS256`, `RS256`, `ES384`, `ES512`, `PS384`, `PS512`, `RS384`, `RS512` | `token_endpoint_auth_signing_alg_values_supported` |
-| `idTokenSigningAlgs` | `readonly string[]` | `['RS256']` | `id_token_signing_alg_values_supported` |
-| `claims` | `readonly string[]` | omitted | `claims_supported` |
-| `subjectTypes` | `readonly string[]` | `['public']` | `subject_types_supported` |
+| `scopesSupported` | `readonly string[]` | omitted | `scopes_supported` |
+| `grantTypesSupported` | `readonly string[]` | `['authorization_code', 'refresh_token']` | `grant_types_supported` |
+| `tokenEndpointAuthMethodsSupported` | `readonly string[]` | `['client_secret_basic', 'client_secret_post', 'private_key_jwt']` | `token_endpoint_auth_methods_supported` |
+| `tokenEndpointAuthSigningAlgValuesSupported` | `readonly string[]` | `Keys.assertionAlgorithms` | `token_endpoint_auth_signing_alg_values_supported` |
+| `idTokenSigningAlgValuesSupported` | `readonly string[]` | `['RS256']` | `id_token_signing_alg_values_supported` |
+| `allowWithoutRs256` | `boolean` | `false` | none. Permits an ID token algorithm list without `RS256`, as FAPI 2.0 OPs do. |
+| `claimsSupported` | `readonly string[]` | omitted | `claims_supported` |
+| `subjectTypesSupported` | `readonly string[]` | `['public']` | `subject_types_supported` |
 | `claimsParameterSupported` | `boolean` | `false` | `claims_parameter_supported` |
 
-The default for `idTokenSigningAlgs` is `RS256` because OIDC Discovery section 3 says it MUST be listed.
+The default for `idTokenSigningAlgValuesSupported` is `RS256` because OIDC Discovery section 3 says it MUST be listed.
+
+## AuthorizationServerMetadata
+
+```ts title="signature"
+interface AuthorizationServerMetadata {
+  readonly issuer: string;
+  readonly authorization_endpoint: string;
+  readonly token_endpoint: string;
+  readonly jwks_uri: string;
+  readonly userinfo_endpoint?: string;
+  readonly introspection_endpoint?: string;
+  readonly revocation_endpoint?: string;
+  readonly registration_endpoint?: string;
+  readonly end_session_endpoint?: string;
+  readonly scopes_supported?: readonly string[];
+  readonly response_types_supported: readonly string[];
+  readonly response_modes_supported: readonly string[];
+  readonly grant_types_supported: readonly string[];
+  readonly subject_types_supported: readonly string[];
+  readonly id_token_signing_alg_values_supported: readonly string[];
+  readonly token_endpoint_auth_methods_supported: readonly string[];
+  readonly token_endpoint_auth_signing_alg_values_supported?: readonly string[];
+  readonly claims_supported?: readonly string[];
+  readonly code_challenge_methods_supported: readonly string[];
+  readonly authorization_response_iss_parameter_supported: boolean;
+  readonly claims_parameter_supported: boolean;
+  readonly request_parameter_supported: boolean;
+  readonly request_uri_parameter_supported: boolean;
+}
+```
+
+The typed document. Absent optional members are omitted.
 
 ## authorizationServer
 
 ```ts title="signature"
-const authorizationServer: (options: AuthorizationServerOptions) => Record<string, unknown>;
+const authorizationServer: (options: AuthorizationServerOptions) => AuthorizationServerMetadata;
 ```
 
 Returns the document. Members whose value is `undefined` are removed. These members are fixed:
@@ -84,7 +118,8 @@ Throws `TypeError` when:
 - `issuer` is not an absolute URL (`Issuer must be an absolute URL`).
 - `issuer` is not `https`. `http` is allowed only for `localhost`, `127.0.0.1` and `[::1]`.
 - `issuer` has a query or fragment ([RFC 8414 section 2](https://www.rfc-editor.org/rfc/rfc8414#section-2)).
-- `tokenEndpointAuthSigningAlgs` contains a symmetric or `none` algorithm.
+- `tokenEndpointAuthSigningAlgValuesSupported` contains an algorithm outside `Keys.assertionAlgorithms` (`token_endpoint_auth_signing_alg_values_supported must be assertionAlgorithms`).
+- `idTokenSigningAlgValuesSupported` lacks `RS256` and `allowWithoutRs256` is not `true`.
 
 ```ts
 const document = Metadata.authorizationServer({
@@ -95,8 +130,8 @@ const document = Metadata.authorizationServer({
     jwks: 'https://op.example.com/jwks',
     userinfo: 'https://op.example.com/userinfo',
   },
-  scopes: ['openid', 'profile', 'email'],
-  idTokenSigningAlgs: ['ES256', 'RS256'],
+  scopesSupported: ['openid', 'profile', 'email'],
+  idTokenSigningAlgValuesSupported: ['ES256', 'RS256'],
 });
 return Response.json(document);
 ```

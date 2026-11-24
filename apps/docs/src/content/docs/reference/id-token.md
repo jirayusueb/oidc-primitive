@@ -51,7 +51,7 @@ interface SignOptions {
 | `kid` | `string` | none | Written to the protected header. |
 | `alg` | `string` | none | Written to the protected header. |
 | `clientId` | `string` | none | Required when `aud` has several values. Becomes `azp`. |
-| `expiresIn` | `string \| number` | `"10m"` | A jose time span, or an absolute epoch-seconds number. |
+| `expiresIn` | `string \| number` | `600` | A number is seconds from now. A string is a jose time span such as `"10m"`. |
 | `accessToken` | `string \| Redacted<string>` | none | Adds `at_hash` for the access token issued with this ID token. |
 
 ## sign
@@ -92,6 +92,7 @@ interface VerifyOptions {
   readonly keys: VerifyKey;
   readonly allowExpired?: boolean;
   readonly algorithms?: readonly string[];
+  readonly clockTolerance?: number;
 }
 ```
 
@@ -101,15 +102,31 @@ interface VerifyOptions {
 | `audience` | `string` | none | Required `aud` value. |
 | `keys` | [`Keys.VerifyKey`](/reference/keys/#verifykey) | none | Public key, JWK or resolver. |
 | `allowExpired` | `boolean` | `false` | Accept an expired token. Signature, issuer and audience still apply. |
-| `algorithms` | `readonly string[]` | `Keys.allowedAlgorithms` | Narrows the allow-list. A value outside it throws `TypeError`. |
+| `algorithms` | `readonly string[]` | `Keys.tokenAlgorithms` | Narrows the allow-list. A value outside it throws `TypeError`. |
+| `clockTolerance` | `number` | `30` | Seconds of clock skew. |
+
+## VerifiedClaims
+
+```ts title="signature"
+interface VerifiedClaims {
+  readonly iss: string;
+  readonly sub: string;
+  readonly aud: string | string[];
+  readonly iat: number;
+  readonly exp: number;
+  readonly [claim: string]: unknown;
+}
+```
+
+The claims every verified ID token carries. Other claims pass through.
 
 ## verify
 
 ```ts title="signature"
-const verify: (jwt: string, options: VerifyOptions) => Promise<JWTPayload>;
+const verify: (jwt: string, options: VerifyOptions) => Promise<VerifiedClaims>;
 ```
 
-Verifies an ID token for use as `id_token_hint`. Requires `sub`, `iat` and `exp`. Returns the payload. With `allowExpired`, an expired but authentic token returns its payload.
+Verifies an ID token for use as `id_token_hint`. Requires `sub`, `iat` and `exp`, and checks that `iss` and `sub` are strings and `iat` and `exp` are numbers. Returns the typed claims. With `allowExpired`, an expired but authentic token returns its claims.
 
 Throws `OAuthError.InvalidRequest` (`id_token_hint is invalid`) on any failure. Throws `TypeError` when `algorithms` leaves the allow-list.
 

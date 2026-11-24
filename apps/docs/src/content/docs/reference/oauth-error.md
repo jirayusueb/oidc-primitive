@@ -17,7 +17,7 @@ The namespace contains the class of the same name: use `OAuthError.OAuthError` f
 
 ```ts title="signature"
 type Code =
-  | 'invalid_request' | 'invalid_client' | 'invalid_grant' | 'unauthorized_client'
+  | 'invalid_redirect_uri' | 'invalid_request' | 'invalid_client' | 'invalid_grant' | 'unauthorized_client'
   | 'unsupported_grant_type' | 'unsupported_response_type' | 'invalid_scope' | 'invalid_target'
   | 'access_denied' | 'login_required' | 'consent_required' | 'interaction_required'
   | 'account_selection_required' | 'request_not_supported' | 'request_uri_not_supported'
@@ -57,7 +57,7 @@ class OAuthError extends Error {
   readonly status: number;
   readonly description: string | undefined;
   constructor(code: string, options?: Options);
-  toJSON(): { error: string; error_description?: string };
+  toJSON(): { error?: string; error_description?: string };
   toResponse(): Response;
   toRedirect(redirectUri: string, options: RedirectOptions): Response;
 }
@@ -99,6 +99,7 @@ Every class extends `OAuthError`. Constructors take an optional `description` un
 | Class | `error` | Status |
 | --- | --- | --- |
 | `InvalidRequest` | `invalid_request` | 400 |
+| `InvalidRedirectUri` | `invalid_redirect_uri` | 400 |
 | `InvalidClient` | `invalid_client` | 401 |
 | `InvalidGrant` | `invalid_grant` | 400 |
 | `UnauthorizedClient` | `unauthorized_client` | 400 |
@@ -124,7 +125,14 @@ The status applies to `toResponse()`. A redirect from `toRedirect()` is always 3
 
 ## InvalidClient
 
-`toResponse()` adds `WWW-Authenticate: Basic realm="token"` (RFC 6749 section 5.2).
+```ts title="signature"
+class InvalidClient extends OAuthError {
+  readonly scheme: 'Basic' | undefined;
+  constructor(description?: string, options?: { readonly scheme?: 'Basic' });
+}
+```
+
+Pass `{ scheme: 'Basic' }` when the client authenticated with the `Authorization` header. Then `toResponse()` adds `WWW-Authenticate: Basic realm="token"` (RFC 6749 section 5.2). Without it, there is no header.
 
 ## MissingToken
 
@@ -134,7 +142,7 @@ class MissingToken extends OAuthError {
 }
 ```
 
-For a request with no bearer token at all. `toResponse()` returns 401 with an empty body and a bare `WWW-Authenticate: Bearer` header, with no error code ([RFC 6750 section 3.1](https://www.rfc-editor.org/rfc/rfc6750#section-3.1)).
+For a request with no bearer token at all. `toResponse()` returns 401 with an empty body and a bare `WWW-Authenticate: Bearer` header, with no error code ([RFC 6750 section 3.1](https://www.rfc-editor.org/rfc/rfc6750#section-3.1)). `toJSON()` returns `{}`. `toRedirect()` throws `TypeError`, because a missing token is a resource-server condition. It is not an `InvalidToken`, so catch `OAuthError` to handle both.
 
 ## InvalidToken
 
@@ -161,7 +169,7 @@ return new OAuthError.InsufficientScope('write').toResponse();
 const make: (code: Code | (string & {}), options?: Options) => OAuthError;
 ```
 
-Builds an `OAuthError` with any code, for extension specs such as `use_dpop_nonce`.
+Builds an `OAuthError`. A registered `Code` returns its subclass, with the status and challenge the RFC defines, and ignores `options.status`. Any other code, for extension specs such as `use_dpop_nonce`, returns a base `OAuthError` that honors `options`.
 
 ```ts
 const error = OAuthError.make('use_dpop_nonce', { status: 401 });

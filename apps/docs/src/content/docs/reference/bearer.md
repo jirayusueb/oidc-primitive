@@ -35,9 +35,9 @@ const token = Bearer.extract(request.headers);
 interface ChallengeOptions {
   readonly realm?: string;
   readonly error?: string;
-  readonly error_description?: string;
+  readonly errorDescription?: string;
   readonly scope?: string;
-  readonly resource_metadata?: string;
+  readonly resourceMetadata?: string;
 }
 ```
 
@@ -45,9 +45,9 @@ interface ChallengeOptions {
 | --- | --- | --- | --- |
 | `realm` | `string` | omitted | `realm` auth-param. |
 | `error` | `string` | omitted | An error code such as `invalid_token`. |
-| `error_description` | `string` | omitted | Human-readable text. |
+| `errorDescription` | `string` | omitted | Human-readable text. Written as `error_description`. |
 | `scope` | `string` | omitted | Scopes required, for `insufficient_scope`. |
-| `resource_metadata` | `string` | omitted | URL of the protected resource metadata ([RFC 9728 section 5.1](https://www.rfc-editor.org/rfc/rfc9728#section-5.1)). |
+| `resourceMetadata` | `string` | omitted | URL of the protected resource metadata, written as `resource_metadata` ([RFC 9728 section 5.1](https://www.rfc-editor.org/rfc/rfc9728#section-5.1)). |
 
 ## challenge
 
@@ -62,7 +62,7 @@ Throws `TypeError` when a value has characters outside [RFC 6750 section 3](http
 ```ts
 const header = Bearer.challenge({
   realm: 'api',
-  resource_metadata: 'https://api.example.com/.well-known/oauth-protected-resource',
+  resourceMetadata: 'https://api.example.com/.well-known/oauth-protected-resource',
 });
 return new Response(null, { status: 401, headers: { 'WWW-Authenticate': header } });
 ```

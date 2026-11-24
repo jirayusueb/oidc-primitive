@@ -14,10 +14,10 @@ import { Resource } from 'oidc-primitive';
 ## validate
 
 ```ts title="signature"
-const validate: (uri: string) => string;
+const validate: (uri: string) => void;
 ```
 
-Returns `uri` when it is an absolute URI without a fragment ([RFC 8707 section 2](https://www.rfc-editor.org/rfc/rfc8707#section-2)). Throws `OAuthError.InvalidTarget` (`resource must be an absolute URI without a fragment`) otherwise.
+Returns nothing when `uri` is an absolute URI without a fragment ([RFC 8707 section 2](https://www.rfc-editor.org/rfc/rfc8707#section-2)). Throws `OAuthError.InvalidTarget` (`resource must be an absolute URI without a fragment`) otherwise.
 
 ## audience
 

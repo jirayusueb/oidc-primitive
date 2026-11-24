@@ -99,7 +99,7 @@ const jwks = await Keys.jwks([
 
 Access tokens are JWTs. A resource server accepts one until `exp` even after you revoke the grant, so keep lifetimes short.
 
-Verification accepts only `ES256`, `EdDSA`, `PS256` and `RS256` (`Keys.allowedAlgorithms`).
+Verification accepts only `ES256`, `EdDSA`, `PS256` and `RS256` (`Keys.tokenAlgorithms`).
 
 ## Host duties here
 

@@ -27,10 +27,10 @@ type RequestMap = Readonly<Record<string, unknown>>;
 
 Claim names requested for one target. Each value is `null` or an object, as in OIDC Core section 5.5.
 
-## Request
+## ClaimsRequest
 
 ```ts title="signature"
-interface Request {
+interface ClaimsRequest {
   readonly userinfo?: RequestMap;
   readonly id_token?: RequestMap;
 }
@@ -60,7 +60,7 @@ const names = Claims.forScopes(['openid', 'email']);
 ## parseRequest
 
 ```ts title="signature"
-const parseRequest: (json: string | null | undefined) => Request;
+const parseRequest: (json: string | null | undefined) => ClaimsRequest;
 ```
 
 Parses the `claims` request parameter. `null` or `undefined` returns `{}`. Only `userinfo` and `id_token` members are kept.
@@ -77,7 +77,7 @@ const requested = Claims.parseRequest(raw);
 ```ts title="signature"
 interface SelectOptions {
   readonly scopes: Iterable<string>;
-  readonly request?: Request;
+  readonly request?: ClaimsRequest;
   readonly target: Target;
 }
 ```
@@ -85,7 +85,7 @@ interface SelectOptions {
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `scopes` | `Iterable<string>` | none | Granted scopes. |
-| `request` | `Request` | none | The parsed `claims` parameter. |
+| `request` | `ClaimsRequest` | none | The parsed `claims` parameter. |
 | `target` | `Target` | none | Which member of `request` applies. |
 
 ## select

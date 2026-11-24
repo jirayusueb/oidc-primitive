@@ -49,7 +49,7 @@ interface SignOptions {
 | `key` | `CryptoKey` | none | Private signing key. |
 | `kid` | `string` | none | Written to the protected header. |
 | `alg` | `string` | none | Written to the protected header. |
-| `expiresIn` | `string \| number` | `"10m"` | A jose time span, or an absolute epoch-seconds number. |
+| `expiresIn` | `string \| number` | `600` | A number is seconds from now. A string is a jose time span such as `"10m"`. |
 
 ## sign
 
@@ -84,7 +84,7 @@ interface VerifyOptions {
 | `issuer` | `string` | none | Required `iss`. |
 | `audience` | `string` | none | Required `aud` value. |
 | `keys` | [`Keys.VerifyKey`](/reference/keys/#verifykey) | none | A public key, a JWK, or a resolver from `Keys.localSet` or `Keys.remoteSet`. |
-| `algorithms` | `readonly string[]` | `Keys.allowedAlgorithms` | Narrows the allow-list. A value outside `ES256`, `EdDSA`, `PS256`, `RS256` throws `TypeError`. |
+| `algorithms` | `readonly string[]` | `Keys.tokenAlgorithms` | Narrows the allow-list. A value outside `ES256`, `EdDSA`, `PS256`, `RS256` throws `TypeError`. |
 | `clockTolerance` | `number` | `30` | Seconds of clock skew. |
 | `confirm` | function | none | Called with `cnf` of a sender-constrained token. Throw to reject. Without it, such tokens are rejected. |
 

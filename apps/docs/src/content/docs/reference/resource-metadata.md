@@ -37,10 +37,27 @@ interface Options {
 | `resourceSigningAlgValuesSupported` | `readonly string[]` | omitted | `resource_signing_alg_values_supported` |
 | `resourceDocumentation` | `string` | omitted | `resource_documentation` |
 
+## ProtectedResourceMetadata
+
+```ts title="signature"
+interface ProtectedResourceMetadata {
+  readonly resource: string;
+  readonly authorization_servers: readonly string[];
+  readonly scopes_supported?: readonly string[];
+  readonly bearer_methods_supported: readonly string[];
+  readonly resource_name?: string;
+  readonly jwks_uri?: string;
+  readonly resource_signing_alg_values_supported?: readonly string[];
+  readonly resource_documentation?: string;
+}
+```
+
+The typed document. Absent optional members are omitted.
+
 ## make
 
 ```ts title="signature"
-const make: (options: Options) => Record<string, unknown>;
+const make: (options: Options) => ProtectedResourceMetadata;
 ```
 
 Returns the document in snake_case. Members whose value is `undefined` are removed.

@@ -11,13 +11,21 @@ description: Generate signing keys, publish a public JWK Set, and resolve verifi
 import { Keys } from 'oidc-primitive';
 ```
 
-## allowedAlgorithms
+## tokenAlgorithms
 
 ```ts title="signature"
-const allowedAlgorithms: readonly string[];
+const tokenAlgorithms: readonly string[];
 ```
 
-The allow-list for verifying tokens: `ES256`, `EdDSA`, `PS256`, `RS256`. `AccessToken.verify` and `IdToken.verify` use it by default and reject any `algorithms` option outside it.
+The frozen allow-list for tokens this library signs and verifies: `ES256`, `EdDSA`, `PS256`, `RS256`. `AccessToken.verify` and `IdToken.verify` use it by default and reject any `algorithms` option outside it. Nothing can widen it.
+
+## assertionAlgorithms
+
+```ts title="signature"
+const assertionAlgorithms: readonly string[];
+```
+
+The frozen list of asymmetric algorithms accepted for client assertions and advertised in metadata: `ES256`, `ES384`, `ES512`, `EdDSA`, `PS256`, `PS384`, `PS512`, `RS256`, `RS384`, `RS512`. `HS*` and `none` are never accepted. `ClientAssertion.verify` and `Metadata.authorizationServer` use it.
 
 ## KeyPair
 

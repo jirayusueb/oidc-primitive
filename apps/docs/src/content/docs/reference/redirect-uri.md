@@ -30,11 +30,11 @@ const validate: (
 | --- | --- | --- | --- |
 | `applicationType` | `ApplicationType` | `'web'` | `'native'` allows private-use schemes. |
 
-Returns nothing when the URI is acceptable. Throws `OAuthError.InvalidRequest` when:
+Returns nothing when the URI is acceptable. Throws `OAuthError.InvalidRedirectUri` (`invalid_redirect_uri`, [RFC 7591 section 3.2.2](https://www.rfc-editor.org/rfc/rfc7591#section-3.2.2)) when:
 
 - it is not an absolute URI (`redirect_uri is not an absolute URI`);
 - it contains a fragment (`redirect_uri must not contain a fragment`);
-- it uses `http` on a host other than `localhost`, `127.0.0.1` or `[::1]` (`redirect_uri must use https outside loopback`);
+- it uses `http` on a host other than `127.0.0.1` or `[::1]`, including `localhost` (`redirect_uri must use https outside loopback`);
 - it uses another scheme, and either the type is `web`, or the scheme is `javascript:`, `data:`, `vbscript:`, `file:` or `blob:` (`redirect_uri scheme is not allowed`).
 
 `https` URIs always pass.
