@@ -1,0 +1,25 @@
+---
+interface Props {
+	code: string;
+	caption: string;
+}
+const { code, caption } = Astro.props;
+---
+
+<figure class="op-diagram not-content">
+	<pre class="op-diagram-canvas" data-pele>{code.trim()}</pre>
+	<figcaption>{caption}</figcaption>
+</figure>
+
+<script>
+	import { mount, register } from 'pele/core';
+	import sequence from 'pele/diagrams/sequence';
+
+	register(sequence);
+	for (const el of document.querySelectorAll<HTMLElement>('[data-pele]')) {
+		const source = el.textContent ?? '';
+		el.textContent = '';
+		// Fixed size keeps labels readable; the canvas scrolls on narrow screens instead of crushing columns.
+		mount(el, source, { monospace: ['messages'], zoom: false, responsive: false, autoDirection: false });
+	}
+</script>

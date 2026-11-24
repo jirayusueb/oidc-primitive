@@ -14,6 +14,28 @@ hero:
       variant: secondary
 ---
 
+import { Image } from 'astro:assets';
+import flow from '../../assets/flow-infographic.webp';
+
+<section class="op-section">
+
+## One flow, five checkpoints
+
+The authorization code flow passes through five steps. At each one, your route calls the functions that check it.
+
+<figure class="op-figure not-content">
+	<Image
+		src={flow}
+		widths={[768, 1536]}
+		sizes="(min-width: 72rem) 70rem, 100vw"
+		alt="Authorization code flow in five steps. 1 Authorize: RedirectUri.matches, Pkce.checkMethod. 2 Issue code: Token.generate, Token.hash. 3 Token request: ClientSecret.parseBasic, Pkce.verify. 4 Sign tokens: IdToken.sign, AccessToken.sign. 5 Call API: AccessTokenVerifier. Underneath all steps: your app owns routes, storage, sessions, and UI."
+	/>
+</figure>
+
+The [library and host](/guide/library-and-host/#one-flow-two-owners) guide shows the same flow as a sequence diagram.
+
+</section>
+
 <section class="op-section">
 
 ## Every check names its spec

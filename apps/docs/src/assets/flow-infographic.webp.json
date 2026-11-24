@@ -1,0 +1,4 @@
+{
+  "prompt": "gpt-image-2 (openai-codex), 1536x1024, cropped to 1536x700. Flat vector infographic of the OAuth 2.1 authorization code flow for oidc-primitive: five numbered cards (Authorize: RedirectUri.matches, Pkce.checkMethod; Issue code: Token.generate, Token.hash; Token request: ClientSecret.parseBasic, Pkce.verify; Sign tokens: IdToken.sign, AccessToken.sign; Call API: AccessTokenVerifier) above a band 'Your app: routes, storage, sessions, UI'. Background #121310, text #F3F1E8, accent #63D2C1, IBM Plex Sans and Mono style.",
+  "createdAt": "2026-11-24T16:52:35.991Z"
+}

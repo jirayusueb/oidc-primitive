@@ -3,6 +3,10 @@ title: Library and host
 description: What oidc-primitive checks, what your application owns, and the conventions every module shares.
 ---
 
+import { Image } from 'astro:assets';
+import PeleDiagram from '../../../components/PeleDiagram.astro';
+import modules from '../../../assets/modules-infographic.webp';
+
 The package is a set of functions. It holds no state, opens no sockets and reads no storage. Your application is the host.
 
 ## What the library does
@@ -24,6 +28,33 @@ The package is a set of functions. It holds no state, opens no sockets and reads
 
 The [Host checklist](/guide/host-checklist/) lists these duties per endpoint.
 
+## One flow, two owners
+
+In the authorization code flow, your app handles every request and stores every record. It calls `oidc-primitive` for each security decision. A resource server uses the library the same way.
+
+<PeleDiagram
+	caption="Authorization code flow with PKCE. Solid arrows are requests and calls; dashed arrows are responses."
+	code={`sequenceDiagram
+  participant C as Client
+  participant A as Your app
+  participant L as oidc-primitive
+  participant R as Resource server
+  C->>A: GET /authorize<br/>redirect_uri, code_challenge
+  A->>L: RedirectUri.matches<br/>Pkce.checkMethod
+  A->>L: Token.generate<br/>Token.hash
+  Note over A: store code hash<br/>TTL 60 s or less
+  A-->>C: 303 with code and iss<br/>OAuthResponse.redirect
+  C->>A: POST /token<br/>code, code_verifier
+  A->>L: ClientSecret.parseBasic<br/>Token.matchesHash
+  Note over A: consume code hash<br/>atomically
+  A->>L: Pkce.verify
+  A->>L: IdToken.sign<br/>AccessToken.sign
+  A-->>C: tokens, no-store<br/>OAuthResponse.json
+  C->>R: GET /api<br/>Authorization: Bearer
+  R->>L: AccessTokenVerifier
+  R-->>C: 200, or 401 with<br/>Bearer.challenge`}
+/>
+
 ## Runtime
 
 The library uses Web APIs (`Request`, `Response`, `Headers`, `URL`, `crypto.subtle`) and `jose`. It does not import Node or Bun modules. It runs where those exist: Bun, Node and edge runtimes. Every handler takes and returns Web `Request` and `Response` objects or plain values, so you can mount it in any framework.
@@ -41,6 +72,15 @@ const code = Token.generate();
 ```
 
 Parameters that name a value you looked up (a stored challenge, a registered URI list) are plain arguments. The library never fetches them.
+
+<figure class="op-figure not-content">
+	<Image
+		src={modules}
+		widths={[768, 1536]}
+		sizes="(min-width: 50rem) 46rem, 100vw"
+		alt="The 20 modules grouped in five columns. Authorization requests: Pkce, RedirectUri, Scope, Resource. Client authentication: ClientSecret, ClientAssertion, Token. Tokens and keys: IdToken, AccessToken, TokenSigner, Keys. Resource servers: AccessTokenVerifier, Bearer, ResourceMetadata. Discovery and responses: Metadata, Claims, Introspection, OAuthResponse, OAuthError, Redacted."
+	/>
+</figure>
 
 ## Secrets are `Redacted`
 
