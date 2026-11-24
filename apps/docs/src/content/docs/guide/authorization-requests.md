@@ -37,7 +37,7 @@ See [RedirectUri](/reference/redirect-uri/).
 
 ## 2. Check PKCE
 
-When a `code_challenge` is present, call `Pkce.checkMethod` with `code_challenge_method`. Only `S256` passes. An absent method means `plain` and is rejected ([RFC 9700 s2.1.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1)). Then check the shape of the challenge with `Pkce.isChallenge`.
+When a `code_challenge` is present, call `Pkce.validateMethod` with `code_challenge_method`. Only `S256` passes. An absent method means `plain` and is rejected ([RFC 9700 s2.1.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1)). Then check the shape of the challenge with `Pkce.isChallenge`.
 
 ```ts
 import { OAuthError, Pkce } from 'oidc-primitive';
@@ -46,7 +46,7 @@ declare const params: URLSearchParams;
 
 const challenge = params.get('code_challenge');
 if (challenge !== null) {
-	Pkce.checkMethod(params.get('code_challenge_method'));
+	Pkce.validateMethod(params.get('code_challenge_method'));
 	if (!Pkce.isChallenge(challenge)) throw new OAuthError.InvalidRequest('code_challenge is malformed');
 }
 ```

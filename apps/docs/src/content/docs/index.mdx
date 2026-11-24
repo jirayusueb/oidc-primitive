@@ -28,7 +28,7 @@ The authorization code flow passes through five steps. At each one, your route c
 		src={flow}
 		widths={[768, 1536]}
 		sizes="(min-width: 72rem) 70rem, 100vw"
-		alt="Authorization code flow in five steps. 1 Authorize: RedirectUri.matches, Pkce.checkMethod. 2 Issue code: Token.generate, Token.hash. 3 Token request: ClientSecret.parseBasic, Pkce.verify. 4 Sign tokens: IdToken.sign, AccessToken.sign. 5 Call API: AccessTokenVerifier. Underneath all steps: your app owns routes, storage, sessions, and UI."
+		alt="Authorization code flow in five steps. 1 Authorize: RedirectUri.matches, Pkce.validateMethod. 2 Issue code: Token.generate, Token.hash. 3 Token request: ClientSecret.parseBasic, Pkce.verify. 4 Sign tokens: IdToken.sign, AccessToken.sign. 5 Call API: AccessTokenVerifier. Underneath all steps: your app owns routes, storage, sessions, and UI."
 	/>
 </figure>
 
@@ -89,7 +89,7 @@ The library answers security questions. It never decides who your users are, whe
 		<tr>
 			<th scope="row">Authorization request</th>
 			<td><b>You</b>Client lookup, login and consent pages, the error page for a bad redirect URI.</td>
-			<td class="lib"><b>oidc-primitive</b><code>RedirectUri.matches</code> exact match, <code>Pkce.checkMethod</code> S256 only, <code>Scope.parse</code>, <code>Resource.audience</code>.</td>
+			<td class="lib"><b>oidc-primitive</b><code>RedirectUri.matches</code> exact match, <code>Pkce.validateMethod</code> S256 only, <code>Scope.parse</code>, <code>Resource.audience</code>.</td>
 		</tr>
 		<tr>
 			<th scope="row">Authorization code</th>

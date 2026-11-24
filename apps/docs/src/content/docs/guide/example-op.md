@@ -134,7 +134,7 @@ declare const exempt: boolean;
 const scope = Scope.parse(p.get('scope')).filter((s) => scopesSupported.includes(s));
 const challenge = p.get('code_challenge') ?? undefined;
 if (challenge !== undefined) {
-	Pkce.checkMethod(p.get('code_challenge_method'));
+	Pkce.validateMethod(p.get('code_challenge_method'));
 	if (!Pkce.isChallenge(challenge)) throw new OAuthError.InvalidRequest('code_challenge is malformed');
 } else if (!exempt) {
 	throw new OAuthError.InvalidRequest('PKCE with code_challenge_method=S256 is required');
@@ -254,12 +254,12 @@ OAuthResponse.json(Claims.select(user, { scopes: v.scope, request: requestedClai
 Both authenticate the caller with the same client authentication as `/token`. Introspection answers `inactive` unless the token belongs to the caller:
 
 ```ts
-import { Introspection } from 'oidc-primitive';
+import { Introspection, OAuthResponse } from 'oidc-primitive';
 
 declare const owned: boolean;
 declare const claims: { scope: string; client_id: string; sub: string };
 
-Introspection.response(owned ? Introspection.active(claims) : Introspection.inactive());
+OAuthResponse.json(owned ? Introspection.active(claims) : Introspection.inactive());
 ```
 
 Revocation answers 200 whether or not the token existed ([RFC 7009 s2.2](https://www.rfc-editor.org/rfc/rfc7009#section-2.2)).

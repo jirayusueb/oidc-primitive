@@ -63,12 +63,12 @@ const names: string[] = Claims.forScopes(['profile']);
 [RFC 7662](https://www.rfc-editor.org/rfc/rfc7662) responses. Authenticate the caller first ([Client authentication](/guide/client-authentication/)). Then answer `Introspection.active(claims)` for a token the caller may see, and `Introspection.inactive()` for everything else. An unknown, expired or foreign token reveals nothing else.
 
 ```ts
-import { Introspection } from 'oidc-primitive';
+import { Introspection, OAuthResponse } from 'oidc-primitive';
 
 declare const live: { scope: string; client_id: string; exp: number; sub: string } | undefined;
 
 const body = live ? Introspection.active({ ...live, token_type: 'Bearer' }) : Introspection.inactive();
-const response: Response = Introspection.response(body);
+const response: Response = OAuthResponse.json(body);
 ```
 
 `active` sets `active: true` and cannot be overridden by the claims you pass. See [Introspection](/reference/introspection/).
@@ -105,7 +105,7 @@ Descriptions are sent to the client. Do not put request input, tokens or secrets
 
 ## Redacted
 
-`Redacted.make(value)` wraps a credential, `Redacted.value(redacted)` reads it, and `Redacted.unwrap(input)` reads it only if it is wrapped. A wrapped value prints as `<redacted>` in `String()`, `JSON.stringify` and console output. See [Redacted](/reference/redacted/).
+`Redacted.make(value)` wraps a credential and `Redacted.value(redacted)` reads it back. A wrapped value prints as `<redacted>` in `String()`, `JSON.stringify` and console output. See [Redacted](/reference/redacted/).
 
 ## Host duties here
 

@@ -40,7 +40,7 @@ In the authorization code flow, your app handles every request and stores every 
   participant L as oidc-primitive
   participant R as Resource server
   C->>A: GET /authorize<br/>redirect_uri, code_challenge
-  A->>L: RedirectUri.matches<br/>Pkce.checkMethod
+  A->>L: RedirectUri.matches<br/>Pkce.validateMethod
   A->>L: Token.generate<br/>Token.hash
   Note over A: store code hash<br/>TTL 60 s or less
   A-->>C: 303 with code and iss<br/>OAuthResponse.redirect

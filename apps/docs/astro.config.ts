@@ -58,6 +58,14 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Flows',
+					items: [
+						{ label: 'Authorization code flow', slug: 'guide/authorization-code-flow' },
+						{ label: 'Client credentials', slug: 'guide/client-credentials' },
+						{ label: 'Refresh token rotation', slug: 'guide/refresh-token-rotation' },
+					],
+				},
+				{
 					label: 'Build a provider',
 					items: [
 						{ label: 'Authorization requests', slug: 'guide/authorization-requests' },
@@ -70,6 +78,14 @@ export default defineConfig({
 				{
 					label: 'Protect an API',
 					items: [{ label: 'Resource servers', slug: 'guide/resource-servers' }],
+				},
+				{
+					label: 'Use cases',
+					items: [
+						{ label: 'Choose your use case', slug: 'guide/use-cases' },
+						{ label: 'Multi-tenant', slug: 'guide/multi-tenant' },
+						{ label: 'MCP authorization', slug: 'guide/mcp-authorization-server' },
+					],
 				},
 				{
 					label: 'Reference',

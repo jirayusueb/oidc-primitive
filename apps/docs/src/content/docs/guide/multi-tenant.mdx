@@ -1,0 +1,50 @@
+---
+title: Multi-tenant
+description: "Serve many issuers from one deployment: resolve the tenant first, then scope every check, key and token to that issuer."
+---
+
+A SaaS often needs one OpenID Provider per tenant, or one per workspace, served from the same code. `oidc-primitive` is built for that shape: nothing in the package is global. Every issuer-dependent call takes the issuer as an argument (`TokenSigner.make({ issuer })`, `AccessTokenVerifier.make({ issuer })`, `Metadata.authorizationServer({ issuer })`), so per-tenant state is per-tenant wiring, not a refactor.
+
+import PeleDiagram from '../../../components/PeleDiagram.astro';
+
+<PeleDiagram
+	caption="Tenant resolution happens once, before any check. Everything after it is keyed by the tenant's issuer."
+	code={`sequenceDiagram
+  participant C as Client
+  participant A as Your app
+  participant L as oidc-primitive
+  C->>A: GET /.well-known/openid-configuration
+  Note over A: resolve tenant from host<br/>or path, before any check
+  A->>L: Metadata.authorizationServer<br/>with the tenant issuer
+  A-->>C: tenant metadata
+  C->>A: GET /authorize
+  A->>L: RedirectUri.matches<br/>against this tenant's clients
+  A->>A: store keyed by issuer
+  A->>L: TokenSigner.make<br/>tenant keys, tenant issuer
+  A-->>C: 303, iss = tenant issuer`}
+/>
+
+## Resolve the tenant before any check
+
+Tenant resolution is host code and it runs first. Decide it from the `Host` header (`tenant.example.com`), a path prefix (`/t/acme/...`), or a signed login state. Until the tenant is known, there is no client registry to check against and no key to sign with, so an unknown tenant gets a plain 404, never an OAuth redirect.
+
+## Keep everything keyed by issuer
+
+- **Client registry.** Client IDs and redirect URIs belong to a tenant. A `client_id` that exists for tenant A must never authenticate at tenant B.
+- **Storage.** Key codes, refresh tokens and grants by issuer. The PKCE challenge stored for one tenant is meaningless under another.
+- **Keys.** One key set per tenant (`Keys.generate` per tenant, one `TokenSigner` per tenant). A tenant's tokens must be issuable only with that tenant's keys.
+- **Metadata.** `Metadata.authorizationServer({ issuer, endpoints })` per tenant, one `/.well-known/openid-configuration` per issuer.
+- **Verification.** A resource server that accepts several issuers builds one `AccessTokenVerifier` per issuer, each with its own `Keys.remoteSet`.
+
+```ts
+import { AccessTokenVerifier, Keys } from 'oidc-primitive';
+
+const verifierFor = (issuer: string) =>
+	AccessTokenVerifier.make({ issuer, audience: 'https://api.example.com', keys: Keys.remoteSet(`${issuer}/jwks`) });
+```
+
+## Tenant boundaries are your enforcement
+
+The library scoping gives you the shape; the isolation is host work. Isolation tests across tenants are on the [roadmap](/roadmap/) for v1.0, and per-tenant budgets for outbound fetches belong in your host code. The [Host checklist](/guide/host-checklist/) tenancy section lists the duties.
+
+The example OP is single-issuer, so multi-tenant wiring is not shown there. The [Example OP](/guide/example-op/) page covers the single-tenant baseline.

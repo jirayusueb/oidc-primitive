@@ -1,0 +1,39 @@
+{
+	"version": 1,
+	"design": "DESIGN.md",
+	"mode": "dark-default",
+	"tokens": {
+		"colors": {
+			"bg": "#121310",
+			"bgLight": "#fbfaf5",
+			"fg": "#f3f1e8",
+			"gray2": "#c3c5ba",
+			"gray3": "#b3b5aa",
+			"gray4": "#7d8076",
+			"gray5": "#3d3f38",
+			"gray6": "#1f201c",
+			"hairline": "#2c2e28",
+			"accent": "#63d2c1",
+			"accentLight": "#0f766a",
+			"codeBg": "#171814"
+		},
+		"fonts": {
+			"sans": "IBM Plex Sans Variable",
+			"mono": "IBM Plex Mono",
+			"displayWeight": 650,
+			"displayTracking": "-0.035em",
+			"contentWidth": "46rem"
+		},
+		"radii": { "sm": "0.3rem", "md": "0.5rem", "lg": "0.75rem", "pill": "999px" },
+		"pele": {
+			"bg": "var(--sl-color-black)",
+			"fg": "var(--sl-color-white)",
+			"muted": "var(--sl-color-gray-3)",
+			"line": "var(--sl-color-gray-3)",
+			"surface": "var(--op-code-bg)",
+			"surfaceAlt": "var(--sl-color-gray-6)",
+			"border": "var(--sl-color-gray-5)",
+			"accent": "var(--op-accent)"
+		}
+	}
+}

@@ -40,3 +40,10 @@
 - Use `OAuthResponse.json` for token, userinfo and introspection responses (`Cache-Control: no-store`).
 - Revocation (RFC 7009) answers 200 for unknown tokens too; delete the grant behind a valid refresh token.
 - Introspection callers must be authenticated; return `Introspection.inactive()` unless the caller may see that token.
+
+## Tenancy
+
+- Resolve the tenant before any check, from the `Host` header, a path prefix, or signed state. An unknown tenant gets a plain 404, never an OAuth redirect.
+- Key clients, codes, refresh tokens and grants by issuer. A `client_id`, a stored challenge or a grant from one tenant must never resolve under another.
+- Keep one key set per tenant. A tenant's tokens are issuable only with that tenant's keys, and its JWKS is published under its own issuer.
+- Give each tenant its own budget for outbound fetches (JWKS, client metadata) so one tenant cannot exhaust the deployment.

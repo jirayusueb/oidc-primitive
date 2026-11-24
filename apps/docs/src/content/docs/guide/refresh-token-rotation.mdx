@@ -1,0 +1,53 @@
+---
+title: Refresh token rotation
+description: Rotate a refresh token on every use, detect reuse, and revoke the whole grant on theft.
+---
+
+A refresh token is a long-lived bearer credential. OAuth 2.1 requires rotation on every use: each refresh answers with a new refresh token, and the old one stops working. A rotated token presented again means the token leaked, and the response is to revoke everything issued from the grant ([draft s4.3.1](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-17#section-4.3.1)).
+
+import PeleDiagram from '../../../components/PeleDiagram.astro';
+
+<PeleDiagram
+	caption="Refresh token rotation. The swap must be atomic; reuse of a rotated token revokes the grant."
+	code={`sequenceDiagram
+  participant C as Client
+  participant A as Your app
+  participant L as oidc-primitive
+  C->>A: POST /token<br/>grant_type=refresh_token
+  A->>L: ClientSecret.parseBasic
+  A->>L: Token.hash
+  Note over A: find row by hash<br/>check exp and client
+  Note over A: swap used 0 -> 1 atomically
+  A->>L: TokenSigner.accessToken
+  A->>L: Token.generate, Token.hash
+  A-->>C: new access token<br/>and new refresh token
+  C->>A: the old token again
+  Note over A: swap finds used=1<br/>theft: revoke the grant
+  A-->>C: invalid_grant`}
+/>
+
+## Storage
+
+- Store `Token.hash(refresh)` only, never the token.
+- Rotation is a compare-and-swap: `UPDATE ... SET used = 1 WHERE hash = ? AND used = 0`. When the update touches zero rows, the token was already rotated: revoke the whole grant and answer `invalid_grant`.
+- A short grace window for concurrent retries is your policy; log every grace use.
+
+## Scope and claims
+
+- A narrower `scope` in the request must not exceed the grant: `Scope.parse` the request and compare against the stored scopes. Requesting more is an error, not a silent upgrade.
+- The refreshed ID token gets no `nonce` (OIDC Core s12.2). Pass `withNonce: false` at the token endpoint.
+
+```ts
+import { OAuthError, Scope, Token } from 'oidc-primitive';
+
+const h = await Token.hash(f.get('refresh_token') ?? '');
+const swapped = db.query('UPDATE refresh SET used = 1 WHERE hash = ? AND used = 0').run(h);
+if (swapped.changes === 0) {
+	revokeGrant(row.grant_id); // reuse of a rotated token
+	throw new OAuthError.InvalidGrant('refresh_token is invalid');
+}
+const requested = f.has('scope') ? Scope.parse(f.get('scope')) : g.scope;
+if (!requested.every((s) => g.scope.includes(s))) throw new OAuthError.InvalidScope('scope exceeds the grant');
+```
+
+Revoking the grant kills the access tokens too. A JWT access token stays valid at resource servers until `exp` even after revocation, which is the argument for short access token lifetimes. See [Host checklist](/guide/host-checklist/).

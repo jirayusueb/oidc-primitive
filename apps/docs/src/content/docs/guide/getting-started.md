@@ -41,7 +41,7 @@ export const authorize = async (params: URLSearchParams): Promise<Response> => {
 	}
 	const state = params.get('state') ?? undefined;
 	try {
-		Pkce.checkMethod(params.get('code_challenge_method'));
+		Pkce.validateMethod(params.get('code_challenge_method'));
 		const challenge = params.get('code_challenge');
 		if (!Pkce.isChallenge(challenge)) throw new OAuthError.InvalidRequest('code_challenge is malformed');
 
