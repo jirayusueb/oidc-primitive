@@ -1,0 +1,131 @@
+---
+title: oidc-primitive
+description: Spec-cited OAuth 2.1 and OpenID Connect security primitives for TypeScript servers. Web APIs and jose only.
+template: splash
+hero:
+  title: The security checks of an OpenID Provider, as functions.
+  tagline: PKCE, redirect URIs, client authentication, ID and access tokens, discovery. Each check cites its spec section. Your app keeps the routes, storage, sessions, and UI.
+  actions:
+    - text: Get started
+      link: /guide/getting-started/
+      variant: primary
+    - text: See the example OP
+      link: /guide/example-op/
+      variant: secondary
+---
+
+<section class="op-section">
+
+## Every check names its spec
+
+A token endpoint is your route, your storage, and a handful of calls. Each call enforces one rule and throws an `OAuthError` that already knows its HTTP response.
+
+```ts title="token.ts"
+import { OAuthError, OAuthResponse, Pkce, Token } from 'oidc-primitive';
+
+export const token = async (form: URLSearchParams): Promise<Response> => {
+	try {
+		const code = form.get('code');
+		if (!code) throw new OAuthError.InvalidRequest('code is required');
+		const record = await consumeCode(await Token.hash(code)); // your storage, atomic
+		if (!record) throw new OAuthError.InvalidGrant('code is invalid');
+		await Pkce.verify(form.get('code_verifier'), record.challenge);
+		return OAuthResponse.json({ access_token: await issueAccessToken(), token_type: 'Bearer', expires_in: 600 });
+	} catch (err) {
+		if (err instanceof OAuthError.OAuthError) return err.toResponse();
+		throw err;
+	}
+};
+```
+
+<ul class="op-specmap not-content">
+	<li><code>Token.hash</code><a href="https://www.rfc-editor.org/rfc/rfc6749#section-10.10">RFC 6749 s10.10, store hashes, never codes</a></li>
+	<li><code>Pkce.verify</code><a href="https://www.rfc-editor.org/rfc/rfc7636#section-4.6">RFC 7636 s4.6, S256 only, downgrade refused (RFC 9700 s4.8.2)</a></li>
+	<li><code>OAuthResponse.json</code><a href="https://www.rfc-editor.org/rfc/rfc6749#section-5.1">RFC 6749 s5.1, <code>Cache-Control: no-store</code></a></li>
+	<li><code>err.toResponse()</code><a href="https://www.rfc-editor.org/rfc/rfc6749#section-5.2">RFC 6749 s5.2, error code and status</a></li>
+</ul>
+
+The test suite follows the same rule: every `describe` block names the RFC or OpenID section it enforces.
+
+</section>
+
+<section class="op-section">
+
+## You own the endpoint
+
+The library answers security questions. It never decides who your users are, where your data lives, or what your pages look like.
+
+<table class="op-matrix not-content">
+	<thead>
+		<tr>
+			<th scope="col"><span class="sr-only">Step</span></th>
+			<th scope="col">Your app<small>routes, storage, UI</small></th>
+			<th scope="col">oidc-primitive<small>checks and encodings</small></th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<th scope="row">Authorization request</th>
+			<td><b>You</b>Client lookup, login and consent pages, the error page for a bad redirect URI.</td>
+			<td class="lib"><b>oidc-primitive</b><code>RedirectUri.matches</code> exact match, <code>Pkce.checkMethod</code> S256 only, <code>Scope.parse</code>, <code>Resource.audience</code>.</td>
+		</tr>
+		<tr>
+			<th scope="row">Authorization code</th>
+			<td><b>You</b>Store the hash with a TTL of 60 seconds or less. Consume it atomically.</td>
+			<td class="lib"><b>oidc-primitive</b><code>Token.generate</code>, <code>Token.hash</code>, <code>OAuthResponse.redirect</code> with <code>iss</code> (RFC 9207).</td>
+		</tr>
+		<tr>
+			<th scope="row">Client authentication</th>
+			<td><b>You</b>Client records, the <code>jti</code> replay store, rate limits.</td>
+			<td class="lib"><b>oidc-primitive</b><code>ClientSecret.parseBasic</code>, <code>Token.matchesHash</code>, <code>ClientAssertion.verify</code>.</td>
+		</tr>
+		<tr>
+			<th scope="row">Tokens and keys</th>
+			<td><b>You</b>User claims, key storage, the rotation schedule, refresh token rotation.</td>
+			<td class="lib"><b>oidc-primitive</b><code>IdToken.sign</code>, <code>AccessToken.sign</code> (RFC 9068), <code>TokenSigner</code>, <code>Keys.jwks</code>.</td>
+		</tr>
+		<tr>
+			<th scope="row">Discovery</th>
+			<td><b>You</b>Which endpoints and features you enable.</td>
+			<td class="lib"><b>oidc-primitive</b><code>Metadata.authorizationServer</code> with secure defaults, <code>Metadata.wellKnownUrls</code>.</td>
+		</tr>
+		<tr>
+			<th scope="row">Resource server</th>
+			<td><b>You</b>Which routes need which scopes.</td>
+			<td class="lib"><b>oidc-primitive</b><code>AccessTokenVerifier</code>, <code>Bearer.extract</code>, <code>Bearer.challenge</code>, <code>ResourceMetadata.make</code>.</td>
+		</tr>
+	</tbody>
+</table>
+
+The [host checklist](/guide/host-checklist/) lists every duty on your side, endpoint by endpoint.
+
+</section>
+
+<section class="op-section">
+
+## Where it runs
+
+<dl class="op-status not-content">
+	<div>
+		<dt>Web APIs and jose</dt>
+		<dd>No <code>node:</code> or <code>bun:</code> imports in the package. Runs on Bun, Node, and edge runtimes.</dd>
+	</div>
+	<div>
+		<dt>One package, 20 modules</dt>
+		<dd>ESM only, no side effects. Import the namespaces you need from <code>oidc-primitive</code>.</dd>
+	</div>
+	<div>
+		<dt>Pre-1.0</dt>
+		<dd>Not on npm yet. The OpenID conformance runner exists; no plan has passed yet. See the <a href="/roadmap/">roadmap</a>.</dd>
+	</div>
+</dl>
+
+</section>
+
+<section class="op-section">
+
+## Start with one endpoint
+
+[Getting started](/guide/getting-started/) wires an authorization endpoint and a token endpoint. [The example OP](/guide/example-op/) is a complete OpenID Provider in one file. The [reference](/reference/pkce/) documents every export.
+
+</section>

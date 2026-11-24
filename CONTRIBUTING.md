@@ -1,4 +1,4 @@
-# Contributing to better-oidc
+# Contributing to oidc-primitive
 
 Thank you for your interest in contributing to our project! This guide will help you get started with the development process.
 
@@ -11,8 +11,8 @@ Thank you for your interest in contributing to our project! This guide will help
 ### Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/jirayusueb/better-oidc.git`
-3. Navigate to the project directory: `cd better-oidc`
+2. Clone your fork: `git clone https://github.com/jirayusueb/oidc-primitive.git`
+3. Navigate to the project directory: `cd oidc-primitive`
 4. Install dependencies: `bun install`
 5. Start development: `bun run dev`
 
@@ -57,6 +57,6 @@ Please be respectful and constructive in all interactions within our community.
 
 ## Questions?
 
-If you have any questions, please [open an issue](https://github.com/jirayusueb/better-oidc/issues/new) for discussion.
+If you have any questions, please [open an issue](https://github.com/jirayusueb/oidc-primitive/issues/new) for discussion.
 
-Thank you for contributing to better-oidc!
+Thank you for contributing to oidc-primitive!

@@ -5,6 +5,8 @@ coverage
 dist
 out
 build
+.astro
+.vercel
 .DS_Store
 *.pem
 .idea

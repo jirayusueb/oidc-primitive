@@ -1,0 +1,43 @@
+---
+const { hero, title } = Astro.locals.starlightRoute.entry.data;
+const install = 'bun add oidc-primitive';
+---
+
+<header class="op-hero not-content">
+	<div>
+	<h1 id="_top">{hero?.title ?? title}</h1>
+	{hero?.tagline && <p set:html={hero.tagline} />}
+	<div class="op-actions">
+		{
+			hero?.actions.map(({ text, link, variant }) => (
+				<a class:list={['op-button', variant === 'primary' && 'primary']} href={link}>
+					{text}
+				</a>
+			))
+		}
+		<button class="op-chip" type="button" data-copy={install} aria-label={`Copy "${install}"`}>
+			<span class="prompt" aria-hidden="true">$</span>
+			{install}
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<rect x="9" y="9" width="12" height="12" rx="2"></rect>
+				<path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
+			</svg>
+		</button>
+	</div>
+	</div>
+	<svg class="op-hero-mark" viewBox="0 0 32 32" fill="none" stroke-linecap="round" stroke-width="4.5" aria-hidden="true">
+		<circle class="body" cx="12.5" cy="12.5" r="7"></circle>
+		<path class="body" d="M17.5 17.5 27 27"></path>
+		<path class="tooth" d="m24 24-3 3"></path>
+	</svg>
+</header>
+
+<script>
+	for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+		button.addEventListener('click', async () => {
+			await navigator.clipboard.writeText(button.dataset.copy ?? '');
+			button.toggleAttribute('data-copied', true);
+			setTimeout(() => button.removeAttribute('data-copied'), 1500);
+		});
+	}
+</script>

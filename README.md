@@ -18,7 +18,7 @@ const api = AccessTokenVerifier.make({ issuer, audience: 'https://api.example.co
 const { claims } = await api.verifyRequest(request.headers);
 ```
 
-See the [package README](packages/core/README.md) for every module and its defaults.
+See the [docs](https://oidc-primitive.vercel.app) for guides and the API reference, or the [package README](packages/core/README.md) for every module and its defaults.
 
 ## Why
 
@@ -34,6 +34,7 @@ Existing TypeScript providers are whole servers tied to one framework, runtime, 
 | Path | Contents |
 | --- | --- |
 | `packages/core` | The `oidc-primitive` package |
+| `apps/docs` | The docs site (Astro Starlight): `bun run docs:dev` |
 | `examples/bun-op` | A single-file OpenID Provider built only from the package |
 | `conformance` | The OpenID Foundation conformance suite, pinned to v5.3.4, run against `examples/bun-op` |
 | `docs/host-checklist.md` | What your app must do that the primitives cannot |
