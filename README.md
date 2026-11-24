@@ -2,6 +2,9 @@
 
 OAuth 2.1 and OpenID Connect security primitives for TypeScript, built on [`jose`](https://github.com/panva/jose). Use them to build your own Authorization Server, OpenID Provider, or resource server. The library checks and encodes; your app owns routes, storage, sessions, and UI.
 
+[![CI](https://github.com/jirayusueb/oidc-primitive/actions/workflows/ci.yml/badge.svg)](https://github.com/jirayusueb/oidc-primitive/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/oidc-primitive)](https://www.npmjs.com/package/oidc-primitive)
+
 ```sh
 bun add oidc-primitive
 ```
