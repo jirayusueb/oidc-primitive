@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { decodeJwt, decodeProtectedHeader } from 'jose';
 import { AccessToken, Keys, TokenSigner } from '../src/index.ts';
 

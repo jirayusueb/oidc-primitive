@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { Metadata } from '../src/index.ts';
 
 const endpoints = { authorization: 'https://as.example/authorize', token: 'https://as.example/token', jwks: 'https://as.example/jwks' };

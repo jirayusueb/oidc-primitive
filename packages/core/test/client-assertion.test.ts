@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { SignJWT, generateKeyPair } from 'jose';
 import { ClientAssertion, OAuthError } from '../src/index.ts';
 const { InvalidClient } = OAuthError;

@@ -1,6 +1,6 @@
 // Compile-time checks; `bun run type-check` fails when a type drifts (design G4).
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { AccessToken, AccessTokenVerifier, IdToken, Keys, Scope, TokenSigner } from '../src/index.ts';
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;

@@ -28,7 +28,7 @@
 		"prepare": "bun simple-git-hooks",
 		"release": "bumpp -r --commit --push --tag",
 		"test": "bun test",
-		"test:node": "node --test \"packages/*/test/**/*.test.ts\"",
+		"test:node": "vitest run",
 		"test:coverage": "bun test --coverage",
 		"test:watch": "bun test --watch",
 		"type-check": "bun run --filter '*' type-check"

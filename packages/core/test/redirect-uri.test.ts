@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { OAuthError, RedirectUri } from '../src/index.ts';
 
 describe('RFC 9700 s4.1.3 exact redirect matching', () => {

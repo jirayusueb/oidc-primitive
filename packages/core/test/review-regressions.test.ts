@@ -1,6 +1,6 @@
 // Regressions for code review round 1 (CodeReview1, 2026-11-24).
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { inspect } from 'node:util';
 import { SignJWT } from 'jose';
 import { AccessToken, ClientAssertion, IdToken, Keys, Metadata, OAuthError, Pkce, ResourceMetadata } from '../src/index.ts';

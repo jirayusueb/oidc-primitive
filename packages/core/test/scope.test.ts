@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { OAuthError, Resource, Scope } from '../src/index.ts';
 
 describe('RFC 6749 s3.3 scope', () => {
