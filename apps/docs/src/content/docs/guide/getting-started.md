@@ -7,7 +7,7 @@ description: Install oidc-primitive and wire its checks into an authorization en
 
 ## Install
 
-The package is pre-1.0 and not yet on npm. Once published, install it with one of:
+Install it with one of:
 
 ```sh
 bun add oidc-primitive

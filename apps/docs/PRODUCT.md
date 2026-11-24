@@ -29,7 +29,7 @@ Readers arrive from npm, GitHub, or a spec search, usually while implementing on
 ## Capabilities and Constraints
 
 - Modules: `Pkce`, `RedirectUri`, `Scope`, `Resource`, `ClientSecret`, `ClientAssertion`, `Token`, `IdToken`, `AccessToken`, `TokenSigner`, `Keys`, `AccessTokenVerifier`, `Bearer`, `ResourceMetadata`, `Metadata`, `Claims`, `Introspection`, `OAuthResponse`, `OAuthError`, `Redacted`.
-- Pre-1.0. Not published to npm yet. No conformance plan has passed yet.
+- Pre-1.0. `0.1.0` published to npm on 2026-11-25. No conformance plan has passed yet.
 - Not planned: endpoint handlers, storage, sessions, login or consent UI, a client library, implicit/hybrid/password grants.
 
 ## Brand Commitments
