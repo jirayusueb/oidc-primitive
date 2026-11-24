@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { decodeJwt, decodeProtectedHeader, SignJWT } from 'jose';
-import * as AccessToken from '../src/AccessToken.ts';
-import * as Keys from '../src/Keys.ts';
-import { InvalidToken } from '../src/OAuthError.ts';
+import { AccessToken, Keys, OAuthError } from '../src/index.ts';
+const { InvalidToken } = OAuthError;
 
 const issuer = 'https://op.example';
 const audience = 'https://rs.example';
@@ -38,7 +37,8 @@ describe('RFC 9068 s2 signing', () => {
 		const c = decodeJwt(jwt);
 		assert.equal(c.iss, issuer);
 		assert.ok(c.jti);
-		assert.equal((c.exp as number) - (c.iat as number), 600);
+		// jose reads the clock separately for iat and a relative exp, so they can straddle a second.
+		assert.ok([600, 601].includes((c.exp as number) - (c.iat as number)));
 		assert.notEqual(c.jti, decodeJwt(await AccessToken.sign(claims, base)).jti);
 	});
 
@@ -57,7 +57,8 @@ describe('RFC 9068 s4 verification (D9)', () => {
 	it('rejects algorithms outside the allow-list', async () => {
 		const secret = new Uint8Array(32);
 		const jwt = await raw({ alg: 'HS256', typ: 'at+jwt' }, full(), secret);
-		await assert.rejects(AccessToken.verify(jwt, { ...options, keys: secret }), InvalidToken);
+		// A raw secret is outside VerifyKey; force it through to prove the runtime allow-list still rejects HS256.
+		await assert.rejects(AccessToken.verify(jwt, { ...options, keys: secret as never }), InvalidToken);
 		await assert.rejects(AccessToken.verify(jwt, { ...options, algorithms: ['HS256'] }), TypeError);
 	});
 

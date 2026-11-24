@@ -1,0 +1,13 @@
+{
+	"name": "bun-op",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "bun index.ts",
+		"smoke": "bun smoke.ts",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"oidc-primitive": "workspace:*"
+	}
+}

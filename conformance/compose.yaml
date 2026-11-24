@@ -1,0 +1,80 @@
+# OpenID Foundation conformance suite against examples/bun-op. Start it through
+# `bun run conformance`, which builds the package, sets the variables below and cleans up.
+# The suite images and SUITE_COMMIT in run.ts come from the same release (v5.3.4).
+name: oidc-primitive-conformance
+
+services:
+  mongodb:
+    # The MongoDB version the suite's docker-compose uses at this release.
+    image: mongo:6.0.13@sha256:b415b12f638e2685d06c58ab7fb5943577c50fadec6d9340ef67d21aeac72070
+    tmpfs:
+      - /data/db
+
+  server:
+    image: registry.gitlab.com/openid/conformance-suite:release-v5.3.4@sha256:dcc4bd1fb7e9c00f048a67373fe2bec5ecf9feb45a6b5d55e237e5c30e5312c6
+    environment:
+      BASE_URL: https://localhost.emobix.co.uk:8443
+      BASE_MTLS_URL: https://localhost.emobix.co.uk:8444
+      MONGODB_HOST: mongodb
+      SPRING_PROFILES_ACTIVE: dev
+      # Placeholders the suite's web login needs even in dev mode (docker-compose-prebuilt.yml).
+      OIDC_GOOGLE_CLIENTID: google-client
+      OIDC_GOOGLE_SECRET: google-secret
+      OIDC_GITLAB_CLIENTID: gitlab-client
+      OIDC_GITLAB_SECRET: gitlab-secret
+    depends_on:
+      - mongodb
+
+  nginx:
+    image: registry.gitlab.com/openid/conformance-suite/nginx:release-v5.3.4@sha256:9a7850826fcc8690cd43373528f50e9551ba33bf8e4a40b67b13267b0aca3675
+    ports:
+      # Loopback only; browse results at https://localhost.emobix.co.uk:8443 with KEEP=1.
+      - "127.0.0.1:8443:8443"
+    networks:
+      default:
+        aliases:
+          - localhost.emobix.co.uk
+    depends_on:
+      - server
+
+  op:
+    image: oven/bun:1.4.4-alpine@sha256:b356fb856784b61901cbf8a71d50de809cd928a7610fc3ff816c912ec618223c
+    working_dir: /repo
+    command: ["bun", "examples/bun-op/index.ts"]
+    volumes:
+      # The repository, with packages/core/dist built by run.ts.
+      - ..:/repo:ro
+    environment:
+      ISSUER: https://op.test
+      PORT: "3000"
+      CLIENTS: ${CLIENTS:?run.ts sets CLIENTS}
+
+  op-tls:
+    image: caddy:2@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
+    volumes:
+      - ./caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      default:
+        aliases:
+          - op.test
+    depends_on:
+      - op
+
+  runner:
+    image: python:3.13-slim@sha256:7249d5587b78209a006dc4a3b5340678f84ea729239193aa559962cd8c1fce50
+    profiles: [runner]
+    working_dir: /conformance
+    volumes:
+      - ./:/conformance
+    environment:
+      CONFORMANCE_SERVER: https://localhost.emobix.co.uk:8443/
+      CONFORMANCE_SERVER_MTLS: https://localhost.emobix.co.uk:8444/
+      CONFORMANCE_DEV_MODE: "1"
+    entrypoint:
+      - sh
+      - -c
+      - pip install --quiet --root-user-action=ignore httpx==0.28.1 pyparsing==3.2.3 && python3 .cache/runner/run-test-plan.py --export-dir results "$$@"
+      - runner
+    depends_on:
+      - nginx
+      - op-tls

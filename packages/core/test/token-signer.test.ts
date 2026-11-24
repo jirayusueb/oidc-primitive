@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { decodeJwt, decodeProtectedHeader } from 'jose';
-import * as AccessToken from '../src/AccessToken.ts';
-import * as Keys from '../src/Keys.ts';
-import * as TokenSigner from '../src/TokenSigner.ts';
+import { AccessToken, Keys, TokenSigner } from '../src/index.ts';
 
 const { publicKey, privateKey } = await Keys.generate('ES256');
 const signer = TokenSigner.make({ issuer: 'https://op.example', key: privateKey, kid: 'k1', alg: 'ES256' });
@@ -13,7 +11,7 @@ describe('RFC 9068 and OIDC Core token signing with a bound key', () => {
 		const jwt = await signer.accessToken({ sub: 'u', aud: 'https://rs', client_id: 'c' }, { expiresIn: '1m' });
 		assert.equal(decodeProtectedHeader(jwt).typ, 'at+jwt');
 		const v = await AccessToken.verify(jwt, { issuer: 'https://op.example', audience: 'https://rs', keys: publicKey });
-		assert.equal((v.exp - v.iat), 60);
+		assert.ok([60, 61].includes(v.exp - v.iat)); // jose reads the clock twice
 	});
 
 	it('takes clientId and accessToken per call, so one signer serves every client', async () => {

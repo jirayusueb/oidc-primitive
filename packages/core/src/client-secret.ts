@@ -1,5 +1,5 @@
-import { InvalidClient } from './OAuthError.ts';
-import { Redacted } from './Redacted.ts';
+import { InvalidClient } from './oauth-error.ts';
+import { Redacted } from './redacted.ts';
 
 export interface BasicCredentials {
 	readonly clientId: string;

@@ -1,5 +1,5 @@
-import { calculateJwkThumbprint, exportJWK, generateKeyPair } from 'jose';
-import type { JWK, JWTVerifyGetKey } from 'jose';
+import { calculateJwkThumbprint, createLocalJWKSet, createRemoteJWKSet, exportJWK, generateKeyPair } from 'jose';
+import type { JWK, JWTVerifyGetKey, RemoteJWKSetOptions } from 'jose';
 
 /** D9 algorithm allow-list for verifying tokens. */
 export const allowedAlgorithms: readonly string[] = ['ES256', 'EdDSA', 'PS256', 'RS256'];
@@ -43,5 +43,13 @@ export const jwks = async (entries: ReadonlyArray<Entry>): Promise<{ keys: JWK[]
 /** RFC 7638 JWK thumbprint (SHA-256, base64url). */
 export const thumbprint = (jwk: JWK): Promise<string> => calculateJwkThumbprint(jwk);
 
-/** What token verification accepts: a key, or a resolver such as `createLocalJWKSet(jwks)` / `createRemoteJWKSet(url)`. */
-export type VerifyKey = CryptoKey | JWK | Uint8Array | JWTVerifyGetKey;
+/** What token verification accepts: a public key, or a resolver from `localSet` / `remoteSet`. */
+export type VerifyKey = CryptoKey | JWK | JWTVerifyGetKey;
+
+/** A resolver over a JWK Set held locally, for example a client's registered `jwks`. */
+export const localSet = (set: { readonly keys: ReadonlyArray<JWK> }): JWTVerifyGetKey =>
+	createLocalJWKSet({ keys: [...set.keys] });
+
+/** A caching resolver over a remote `jwks_uri`; jose refetches once on an unknown `kid`. */
+export const remoteSet = (url: string | URL, options?: RemoteJWKSetOptions): JWTVerifyGetKey =>
+	createRemoteJWKSet(new URL(url), options);

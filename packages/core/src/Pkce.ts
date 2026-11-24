@@ -1,5 +1,5 @@
 import { digestEqual, sha256Base64url } from './internal/crypto.ts';
-import { InvalidGrant, InvalidRequest } from './OAuthError.ts';
+import { InvalidGrant, InvalidRequest } from './oauth-error.ts';
 
 /** RFC 7636 s4.1: 43-128 characters from [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~". */
 const verifierPattern = /^[A-Za-z0-9\-._~]{43,128}$/;
@@ -13,7 +13,7 @@ export const isChallenge = (value: unknown): value is string =>
 	typeof value === 'string' && challengePattern.test(value);
 
 /** The S256 code challenge for `verifier` (RFC 7636 s4.2). */
-export const challenge = (verifier: string): Promise<string> => {
+export const challenge = async (verifier: string): Promise<string> => {
 	if (!isVerifier(verifier)) throw new InvalidRequest('code_verifier is malformed');
 	return sha256Base64url(verifier);
 };

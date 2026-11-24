@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import * as Introspection from '../src/Introspection.ts';
+import { Introspection } from '../src/index.ts';
 
 describe('RFC 7662 s2.2 introspection response', () => {
 	it('inactive is exactly { active: false }', () => {

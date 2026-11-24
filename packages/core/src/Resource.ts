@@ -1,4 +1,4 @@
-import { InvalidTarget } from './OAuthError.ts';
+import { InvalidTarget } from './oauth-error.ts';
 
 /** RFC 8707 s2: an absolute URI without a fragment. */
 export const validate = (uri: string): string => {

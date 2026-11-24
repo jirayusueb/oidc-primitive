@@ -1,0 +1,5 @@
+# TLS for the example OP at https://op.test, from Caddy's internal CA.
+op.test {
+	tls internal
+	reverse_proxy op:3000
+}

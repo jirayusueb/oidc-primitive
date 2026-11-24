@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import * as Bearer from '../src/Bearer.ts';
-import { InvalidToken } from '../src/OAuthError.ts';
+import { Bearer, OAuthError } from '../src/index.ts';
+const { InvalidToken } = OAuthError;
 
 const headers = (authorization?: string): Headers =>
 	new Headers(authorization === undefined ? {} : { Authorization: authorization });

@@ -1,4 +1,4 @@
-import { Redacted, unwrap } from '../Redacted.ts';
+import { Redacted, unwrap } from '../redacted.ts';
 
 export type ParamValue = string | number | Redacted<string> | undefined;
 

@@ -1,8 +1,9 @@
 import { errors, jwtVerify, SignJWT } from 'jose';
 import type { JWTPayload, JWTVerifyGetKey } from 'jose';
-import { allowedAlgorithms } from './Keys.ts';
-import type { VerifyKey } from './Keys.ts';
-import { InvalidToken, OAuthError } from './OAuthError.ts';
+import { allowedAlgorithms } from './keys.ts';
+import type { VerifyKey } from './keys.ts';
+import { isKeyFetchFailure } from './internal/key-errors.ts';
+import { InvalidToken, OAuthError, TemporarilyUnavailable } from './oauth-error.ts';
 
 export interface Claims {
 	readonly sub: string;
@@ -77,14 +78,18 @@ export const verify = async (token: string, options: VerifyOptions): Promise<Ver
 			requiredClaims: ['sub', 'client_id', 'jti', 'iat', 'exp'],
 		}));
 	} catch (error) {
+		if (isKeyFetchFailure(error)) throw new TemporarilyUnavailable('signing keys are unavailable');
 		throw new InvalidToken(error instanceof errors.JWTExpired ? 'token expired' : 'token is invalid');
 	}
-	if (typeof payload.client_id !== 'string' || (payload.scope !== undefined && typeof payload.scope !== 'string')) {
+	// RFC 7519 s4.1.2, s4.1.7 and RFC 9068 s2.2: these claims are strings.
+	const { sub, jti, client_id, scope } = payload;
+	if ([sub, jti, client_id].some((v) => typeof v !== 'string') || (scope !== undefined && typeof scope !== 'string')) {
 		throw new InvalidToken('token is invalid');
 	}
 	if (payload.cnf !== undefined) {
 		const cnf = payload.cnf;
-		if (options.confirm === undefined || typeof cnf !== 'object' || cnf === null) {
+		// RFC 7800 s3.1: `cnf` is a JSON object.
+		if (options.confirm === undefined || typeof cnf !== 'object' || cnf === null || Array.isArray(cnf)) {
 			throw new InvalidToken('token is sender-constrained');
 		}
 		try {

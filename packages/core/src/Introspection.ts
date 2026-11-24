@@ -1,4 +1,4 @@
-import { json } from './OAuthResponse.ts';
+import { json } from './oauth-response.ts';
 
 export interface Claims {
 	readonly scope?: string;

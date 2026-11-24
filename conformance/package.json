@@ -1,0 +1,9 @@
+{
+	"name": "conformance",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"run": "bun run.ts",
+		"type-check": "tsc --noEmit"
+	}
+}

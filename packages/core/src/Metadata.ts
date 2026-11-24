@@ -19,6 +19,8 @@ export interface AuthorizationServerOptions {
 	readonly idTokenSigningAlgs?: readonly string[];
 	readonly claims?: readonly string[];
 	readonly subjectTypes?: readonly string[];
+	/** OIDC Core s5.5 `claims` request parameter; default false. */
+	readonly claimsParameterSupported?: boolean;
 }
 
 const asymmetric = ['ES256', 'EdDSA', 'PS256', 'RS256', 'ES384', 'ES512', 'PS384', 'PS512', 'RS384', 'RS512'];
@@ -64,12 +66,17 @@ export const authorizationServer = (options: AuthorizationServerOptions): Record
 		response_modes_supported: ['query'],
 		grant_types_supported: options.grantTypes ?? ['authorization_code', 'refresh_token'],
 		subject_types_supported: options.subjectTypes ?? ['public'],
-		id_token_signing_alg_values_supported: options.idTokenSigningAlgs ?? ['ES256'],
+		// OIDC Discovery s3: RS256 MUST be listed, so it is the default.
+		id_token_signing_alg_values_supported: options.idTokenSigningAlgs ?? ['RS256'],
 		token_endpoint_auth_methods_supported: authMethods,
-		token_endpoint_auth_signing_alg_values_supported: signingAlgs,
+		token_endpoint_auth_signing_alg_values_supported: authMethods.includes('private_key_jwt') ? signingAlgs : undefined,
 		claims_supported: options.claims,
 		code_challenge_methods_supported: ['S256'],
 		authorization_response_iss_parameter_supported: true,
+		claims_parameter_supported: options.claimsParameterSupported ?? false,
+		// OIDC Discovery s3 defaults these to true when absent; request objects are not supported.
+		request_parameter_supported: false,
+		request_uri_parameter_supported: false,
 	};
 	for (const key of Object.keys(doc)) if (doc[key] === undefined) delete doc[key];
 	return doc;
@@ -78,7 +85,8 @@ export const authorizationServer = (options: AuthorizationServerOptions): Record
 /** OIDC Discovery s4 and RFC 8414 s3.1 (well-known segment inserted between host and path). */
 export const wellKnownUrls = (issuer: string): { openidConfiguration: string; oauthAuthorizationServer: string } => {
 	const url = parseIssuer(issuer);
-	const path = url.pathname === '/' ? '' : url.pathname;
+	// RFC 8414 s3.1: any terminating "/" is removed before inserting the well-known segment.
+	const path = url.pathname.replace(/\/$/, '');
 	return {
 		openidConfiguration: `${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`,
 		oauthAuthorizationServer: `${url.origin}/.well-known/oauth-authorization-server${path}`,

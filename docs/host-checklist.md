@@ -1,6 +1,6 @@
 # Host checklist
 
-`@better-oidc/core` gives you the security-sensitive checks and encodings. Your app owns routes, request parsing, storage, sessions and UI. These duties stay with you.
+`oidc-primitive` gives you the security-sensitive checks and encodings. Your app owns routes, request parsing, storage, sessions and UI. These duties stay with you.
 
 ## Authorization endpoint
 

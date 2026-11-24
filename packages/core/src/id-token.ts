@@ -1,10 +1,10 @@
 import { base64url, errors, jwtVerify, SignJWT } from 'jose';
 import type { JWTPayload, JWTVerifyGetKey } from 'jose';
 import { sha256 } from './internal/crypto.ts';
-import { allowedAlgorithms } from './Keys.ts';
-import type { VerifyKey } from './Keys.ts';
-import { InvalidRequest } from './OAuthError.ts';
-import { Redacted, unwrap } from './Redacted.ts';
+import { allowedAlgorithms } from './keys.ts';
+import type { VerifyKey } from './keys.ts';
+import { InvalidRequest } from './oauth-error.ts';
+import { Redacted, unwrap } from './redacted.ts';
 
 export interface Claims {
 	readonly sub: string;
@@ -62,8 +62,9 @@ export const atHash = async (accessToken: string | Redacted<string>, alg: string
 /** Sign an ID token. The library sets `iss`, `iat`, `exp`, `azp` and `at_hash`. */
 export const sign = async (claims: Claims, options: SignOptions): Promise<string> => {
 	const multiple = Array.isArray(claims.aud) && claims.aud.length > 1;
-	if (multiple && options.clientId === undefined) {
-		throw new TypeError('IdToken.sign needs clientId when aud has several values');
+	// OIDC Core s2: `azp` is the client_id of the party the token was issued to, and `aud` contains it.
+	if (multiple && (options.clientId === undefined || !claims.aud.includes(options.clientId))) {
+		throw new TypeError('IdToken.sign needs a clientId contained in aud when aud has several values');
 	}
 	const payload: JWTPayload = { ...claims };
 	if (multiple) payload.azp = options.clientId as string;

@@ -1,5 +1,5 @@
 import { challenge as formatChallenge } from './internal/http.ts';
-import { InvalidToken } from './OAuthError.ts';
+import { InvalidToken } from './oauth-error.ts';
 
 /** RFC 6750 s2.1: b64token = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"=". */
 const bearer = /^Bearer +([A-Za-z0-9\-._~+/]+=*)$/i;

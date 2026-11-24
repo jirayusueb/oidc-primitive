@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import * as Claims from '../src/Claims.ts';
-import { InvalidRequest } from '../src/OAuthError.ts';
+import { Claims, OAuthError } from '../src/index.ts';
+const { InvalidRequest } = OAuthError;
 
 describe('OIDC Core s5.4 scope claims', () => {
 	it('maps standard scopes to the exact claim lists', () => {

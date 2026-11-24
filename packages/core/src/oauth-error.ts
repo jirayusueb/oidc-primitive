@@ -72,14 +72,32 @@ export class OAuthError extends Error {
 	}
 }
 
+/** RFC 6750 s3 auth-param characters; a description outside them is dropped from the header, not thrown. */
+const challengeSafe = /^[\x20\x21\x23-\x5B\x5D-\x7E]*$/;
+
 const bearer = (error: OAuthError, extra: Record<string, string | undefined>): Response => {
 	const headers = noStoreHeaders();
-	headers.set(
-		'WWW-Authenticate',
-		challenge('Bearer', { error: error.code, error_description: error.description, ...extra }),
-	);
+	const description = error.description !== undefined && challengeSafe.test(error.description) ? error.description : undefined;
+	headers.set('WWW-Authenticate', challenge('Bearer', { error: error.code, error_description: description, ...extra }));
 	return json(error.toJSON(), error.status, headers);
 };
+
+/**
+ * The request carried no bearer token at all. RFC 6750 s3.1: answer 401 with a bare
+ * `Bearer` challenge and no error code.
+ */
+export class MissingToken extends OAuthError {
+	override readonly _tag = 'MissingToken' as const;
+	constructor() {
+		super('invalid_token', { status: 401 });
+	}
+
+	override toResponse(): Response {
+		const headers = noStoreHeaders();
+		headers.set('WWW-Authenticate', 'Bearer');
+		return new Response(null, { status: 401, headers });
+	}
+}
 
 export class InvalidRequest extends OAuthError {
 	override readonly _tag = 'InvalidRequest' as const;

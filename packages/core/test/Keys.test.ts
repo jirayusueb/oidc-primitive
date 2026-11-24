@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { calculateJwkThumbprint, exportJWK } from 'jose';
-import * as Keys from '../src/Keys.ts';
+import { Keys } from '../src/index.ts';
 
 describe('RFC 7517 s5 JWK Set publishing', () => {
 	it('publishes public members with kid, alg and use', async () => {

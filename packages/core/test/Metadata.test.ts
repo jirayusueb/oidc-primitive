@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import * as Metadata from '../src/Metadata.ts';
+import { Metadata } from '../src/index.ts';
 
 const endpoints = { authorization: 'https://as.example/authorize', token: 'https://as.example/token', jwks: 'https://as.example/jwks' };
 
@@ -16,7 +16,7 @@ describe('RFC 8414 s2 and OIDC Discovery s3 metadata', () => {
 		assert.equal(doc.authorization_response_iss_parameter_supported, true);
 		assert.deepEqual(doc.grant_types_supported, ['authorization_code', 'refresh_token']);
 		assert.deepEqual(doc.token_endpoint_auth_methods_supported, ['client_secret_basic', 'client_secret_post', 'private_key_jwt']);
-		assert.deepEqual(doc.id_token_signing_alg_values_supported, ['ES256']);
+		assert.deepEqual(doc.id_token_signing_alg_values_supported, ['RS256']);
 		assert.deepEqual(doc.subject_types_supported, ['public']);
 		assert.equal((doc.token_endpoint_auth_signing_alg_values_supported as string[]).includes('HS256'), false);
 		assert.equal('userinfo_endpoint' in doc, false);

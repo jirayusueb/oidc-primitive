@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { SignJWT } from 'jose';
-import * as AccessTokenVerifier from '../src/AccessTokenVerifier.ts';
-import * as Keys from '../src/Keys.ts';
-import { InvalidToken } from '../src/OAuthError.ts';
-import * as Scope from '../src/Scope.ts';
-import * as TokenSigner from '../src/TokenSigner.ts';
+import { AccessTokenVerifier, Keys, OAuthError, Scope, TokenSigner } from '../src/index.ts';
+const { InvalidToken } = OAuthError;
 
 const issuer = 'https://op.example';
 const audience = 'https://rs.example';
@@ -23,7 +20,7 @@ describe('RFC 9068 s4 resource server verification', () => {
 		const granted: Array<'read' | 'admin'> = v.granted;
 		assert.deepEqual(granted, ['read']);
 		assert.deepEqual(v.scope, ['read', 'other']);
-		assert.equal(v.sub, 'u');
+		assert.equal(v.claims.sub, 'u');
 	});
 
 	it('handles a token with no scope', async () => {
@@ -45,10 +42,18 @@ describe('RFC 6750 s2.1 verifyRequest', () => {
 		assert.deepEqual(v.granted, ['read']);
 	});
 
-	it('throws InvalidToken when missing, other scheme or malformed', async () => {
-		for (const h of [{} as Record<string, string>, { Authorization: 'Basic Zm9v' }, { Authorization: 'Bearer a b' }]) {
-			await assert.rejects(verifier.verifyRequest(new Headers(h)), InvalidToken);
+	it('answers a missing or other-scheme credential with a bare Bearer challenge (RFC 6750 s3.1)', async () => {
+		for (const h of [{} as Record<string, string>, { Authorization: 'Basic Zm9v' }]) {
+			const error = await verifier.verifyRequest(new Headers(h)).catch((e: unknown) => e);
+			assert.ok(error instanceof OAuthError.MissingToken);
+			const res = error.toResponse();
+			assert.equal(res.status, 401);
+			assert.equal(res.headers.get('www-authenticate'), 'Bearer');
 		}
+	});
+
+	it('throws InvalidToken for a malformed Bearer credential', async () => {
+		await assert.rejects(verifier.verifyRequest(new Headers({ Authorization: 'Bearer a b' })), InvalidToken);
 	});
 });
 
@@ -57,6 +62,6 @@ describe('RFC 9449 s7.1 confirm passthrough', () => {
 		const jwt = await signer.accessToken({ sub: 'u', aud: audience, client_id: 'c', cnf: { jkt: 'x' } });
 		await assert.rejects(verifier.verify(jwt), InvalidToken);
 		const bound = AccessTokenVerifier.make({ issuer, audience, keys: publicKey, confirm: () => {} });
-		assert.deepEqual((await bound.verify(jwt)).cnf, { jkt: 'x' });
+		assert.deepEqual((await bound.verify(jwt)).claims.cnf, { jkt: 'x' });
 	});
 });

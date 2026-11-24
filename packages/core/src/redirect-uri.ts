@@ -1,4 +1,4 @@
-import { InvalidRequest } from './OAuthError.ts';
+import { InvalidRequest } from './oauth-error.ts';
 
 export type ApplicationType = 'web' | 'native';
 

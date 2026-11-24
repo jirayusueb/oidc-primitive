@@ -40,9 +40,9 @@ export const make = (options: Options): Record<string, unknown> => {
 	return doc;
 };
 
-/** RFC 9728 s3.1: `/.well-known/oauth-protected-resource` inserted before the resource path. */
+/** RFC 9728 s3.1: `/.well-known/oauth-protected-resource` between the host and the path and query. */
 export const wellKnownUrl = (resource: string): string => {
 	const url = parseResource(resource);
-	const path = url.pathname === '/' ? '' : url.pathname;
-	return `${url.origin}/.well-known/oauth-protected-resource${path}`;
+	const path = url.pathname.replace(/\/$/, '');
+	return `${url.origin}/.well-known/oauth-protected-resource${path}${url.search}`;
 };

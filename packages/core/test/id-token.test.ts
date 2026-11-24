@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { base64url, decodeJwt, SignJWT } from 'jose';
-import * as IdToken from '../src/IdToken.ts';
-import * as Keys from '../src/Keys.ts';
-import { InvalidRequest } from '../src/OAuthError.ts';
-import * as Redacted from '../src/Redacted.ts';
+import { IdToken, Keys, OAuthError, Redacted } from '../src/index.ts';
+const { InvalidRequest } = OAuthError;
 
 const issuer = 'https://op.example';
 const { publicKey, privateKey } = await Keys.generate('ES256');
@@ -93,6 +91,6 @@ describe('OIDC Core s3.1.2.1 id_token_hint', () => {
 			.setIssuedAt()
 			.setExpirationTime('10m')
 			.sign(new Uint8Array(32));
-		await assert.rejects(IdToken.verify(jwt, { ...options, keys: new Uint8Array(32) }), InvalidRequest);
+		await assert.rejects(IdToken.verify(jwt, { ...options, keys: new Uint8Array(32) as never }), InvalidRequest);
 	});
 });

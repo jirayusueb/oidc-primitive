@@ -1,5 +1,5 @@
-import * as AccessToken from './AccessToken.ts';
-import * as IdToken from './IdToken.ts';
+import * as AccessToken from './access-token.ts';
+import * as IdToken from './id-token.ts';
 
 export interface Options {
 	readonly issuer: string;

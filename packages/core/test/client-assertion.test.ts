@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { SignJWT, generateKeyPair } from 'jose';
-import * as ClientAssertion from '../src/ClientAssertion.ts';
-import { InvalidClient } from '../src/OAuthError.ts';
+import { ClientAssertion, OAuthError } from '../src/index.ts';
+const { InvalidClient } = OAuthError;
 
 const issuer = 'https://as.example.com';
 const clientId = 'client-1';

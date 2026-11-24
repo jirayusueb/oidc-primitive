@@ -1,4 +1,4 @@
-import { InvalidScope } from './OAuthError.ts';
+import { InvalidScope } from './oauth-error.ts';
 
 declare const brand: unique symbol;
 

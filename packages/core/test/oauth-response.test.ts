@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import * as OAuthResponse from '../src/OAuthResponse.ts';
-import * as Redacted from '../src/Redacted.ts';
+import { OAuthResponse, Redacted } from '../src/index.ts';
 
 describe('RFC 6749 s5.1 responses', () => {
 	it('json is no-store and unwraps Redacted only for the response', async () => {

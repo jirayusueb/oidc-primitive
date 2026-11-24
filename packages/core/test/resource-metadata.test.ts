@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import * as ResourceMetadata from '../src/ResourceMetadata.ts';
+import { ResourceMetadata } from '../src/index.ts';
 
 describe('RFC 9728 protected resource metadata', () => {
 	it('builds the document with header bearer default', () => {
