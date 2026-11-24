@@ -1,7 +1,7 @@
 {
-	"name": "core",
+	"name": "@better-oidc/core",
 	"version": "0.1.0",
-	"description": "Beautiful, accessible, and customizable components",
+	"description": "OAuth 2.1 and OpenID Connect security primitives built on jose",
 	"homepage": "https://github.com/jirayusueb/better-oidc/tree/main/packages/core#readme",
 	"license": "MIT",
 	"repository": {
@@ -12,6 +12,7 @@
 		"dist"
 	],
 	"type": "module",
+	"sideEffects": false,
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
@@ -26,12 +27,7 @@
 	"scripts": {
 		"type-check": "tsc --noEmit"
 	},
-	"peerDependencies": {
-		"typescript": ">=4.5.0"
-	},
-	"peerDependenciesMeta": {
-		"typescript": {
-			"optional": true
-		}
+	"dependencies": {
+		"jose": "^6"
 	}
 }

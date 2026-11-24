@@ -1,0 +1,29 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"overrides": [
+		{
+			"files": ["packages/core/src/**/*.ts"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{ "patterns": [{ "group": ["bun:*", "node:*"], "message": "Web APIs and jose only (design D10)." }] }
+				],
+				"no-restricted-globals": [
+					"error",
+					{ "name": "Bun", "message": "Web APIs only (design D10)." },
+					{ "name": "process", "message": "Web APIs only (design D10)." },
+					{ "name": "Buffer", "message": "Web APIs only (design D10)." }
+				]
+			}
+		},
+		{
+			"files": ["examples/**/*.ts"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{ "paths": [{ "name": "jose", "message": "Examples use @better-oidc/core only (design D12)." }] }
+				]
+			}
+		}
+	]
+}
