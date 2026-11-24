@@ -54,15 +54,8 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
 
-      - name: Stage packages for npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish packages to npm
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN secret is missing. Create a stage-only granular token on npmjs.com and add it as the NPM_TOKEN repository secret."
-            exit 1
-          fi
           for dir in packages/*/; do
-            (cd "$dir" && npm stage publish)
+            (cd "$dir" && npm publish --access public --provenance)
           done
-          echo "Staged. Approve the versions on npmjs.com (package page or Settings > Packages > Staged packages) to publish."
