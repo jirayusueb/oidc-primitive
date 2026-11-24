@@ -53,6 +53,15 @@ const { claims, granted } = await api.verifyRequest(request.headers); // granted
 
 The class methods call plain functions you can use directly, for example `AccessToken.verify(token, { issuer, audience, keys })` or `IdToken.sign(claims, { issuer, key, kid, alg })`.
 
+## Errors
+
+Expected failures throw a subclass of `OAuthError.OAuthError`. No function reports failure with `null`, a boolean, or a result value, and a module with nothing to do, such as `ClientSecret.parseBasic` on a request without an `Authorization` header, returns `undefined`. Catch the base class once at your route boundary and rethrow anything that is not an `OAuthError`.
+
+- Verification against remote keys throws `TemporarilyUnavailable` when the JWKS endpoint fails. Answer 503 for it.
+- Bad input to a module throws `TypeError`, for example an `algorithms` value outside the allow-list. That is a defect in your code, not a client error.
+
+Failures are thrown rather than returned because a failure here is terminal: your boundary turns it into a response and the request ends. If your app models errors as values, it can wrap any call in its own result helper.
+
 ## Modules
 
 | Module | What it does | Spec |
