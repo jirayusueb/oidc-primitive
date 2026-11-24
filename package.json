@@ -18,10 +18,10 @@
 	],
 	"type": "module",
 	"scripts": {
-		"build": "bunup",
+		"build": "tsdown",
 		"check-dts": "bun scripts/check-dts.ts",
 		"conformance": "bun run --filter conformance run",
-		"dev": "bunup --watch",
+		"dev": "tsdown --watch",
 		"docs:dev": "bun run --filter docs dev",
 		"docs:build": "bun run --filter docs build",
 		"format": "oxfmt",
