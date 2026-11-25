@@ -18,11 +18,11 @@ export class TokenSigner {
 		this.#options = options;
 	}
 
-	idToken(claims: IdToken.Claims, perCall?: Omit<IdToken.SignOptions, Bound>): Promise<string> {
+	signIdToken(claims: IdToken.Claims, perCall?: Omit<IdToken.SignOptions, Bound>): Promise<string> {
 		return IdToken.sign(claims, { ...perCall, ...this.#options });
 	}
 
-	accessToken(claims: AccessToken.Claims, perCall?: Omit<AccessToken.SignOptions, Bound>): Promise<string> {
+	signAccessToken(claims: AccessToken.Claims, perCall?: Omit<AccessToken.SignOptions, Bound>): Promise<string> {
 		return AccessToken.sign(claims, { ...perCall, ...this.#options });
 	}
 }

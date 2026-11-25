@@ -7,12 +7,12 @@ import {
 	AccessTokenVerifier,
 	ClientAssertion,
 	Bearer,
-	Claims,
+	UserClaims,
 	ClientSecret,
 	IdToken,
 	Introspection,
 	Keys,
-	Metadata,
+	ServerMetadata,
 	OAuthError,
 	OAuthResponse,
 	Pkce,
@@ -20,7 +20,7 @@ import {
 	RedirectUri,
 	Resource,
 	Scope,
-	Token,
+	OpaqueToken,
 	TokenSigner,
 } from 'oidc-primitive';
 
@@ -73,7 +73,7 @@ interface Grant {
 	challenge?: string;
 	pkce_required: boolean;
 	audience: string;
-	claims: Claims.ClaimsRequest;
+	claims: UserClaims.Request;
 	auth_time: number;
 	include_auth_time: boolean;
 	acr?: string;
@@ -142,8 +142,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		clients.set(c.client_id, {
 			client_id: c.client_id,
 			// RFC 6749 s10.10: only the hash of the secret is kept.
-			secretHash: c.client_secret ? await Token.hash(c.client_secret) : undefined,
-			keys: c.jwks_uri ? Keys.remoteSet(c.jwks_uri) : undefined,
+			secretHash: c.client_secret ? await OpaqueToken.hash(c.client_secret) : undefined,
+			keys: c.jwks_uri ? Keys.remoteResolver(c.jwks_uri) : undefined,
 			redirect_uris: c.redirect_uris,
 			method: c.token_endpoint_auth_method,
 			pkce: c.pkce,
@@ -171,12 +171,12 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 	const verifier = AccessTokenVerifier.make({ issuer, audience: issuer, keys: publicKey });
 
 	const url = (path: string): string => `${issuer}${path}`;
-	const metadata: Metadata.AuthorizationServerMetadata = Metadata.authorizationServer({
+	const metadata: ServerMetadata.AuthorizationServerMetadata = ServerMetadata.make({
 		issuer,
 		endpoints: {
 			authorization: url('/authorize'),
 			token: url('/token'),
-			jwks: url('/jwks'),
+			jwksUri: url('/jwks'),
 			userinfo: url('/userinfo'),
 			introspection: url('/introspect'),
 			revocation: url('/revoke'),
@@ -195,7 +195,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 	const session = async (req: Request): Promise<Session | undefined> => {
 		const sid = req.headers.get('cookie')?.split(/;\s*/).find((c) => c.startsWith('sid='))?.slice(4);
 		if (!sid) return undefined;
-		return (db.query('SELECT username, sub, auth_time FROM sessions WHERE hash = ?').get(await Token.hash(sid)) ??
+		return (db.query('SELECT username, sub, auth_time FROM sessions WHERE hash = ?').get(await OpaqueToken.hash(sid)) ??
 			undefined) as Session | undefined;
 	};
 	const revokeGrant = (id: string): void => void db.query('UPDATE grants SET revoked = 1 WHERE id = ?').run(id);
@@ -258,8 +258,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			throw new OAuthError.InvalidRequest('PKCE with code_challenge_method=S256 is required');
 		}
 
-		const audience = Resource.audience(p.getAll('resource'), issuer); // RFC 8707 s2
-		const claims = Claims.parseRequest(p.get('claims')); // OIDC Core s5.5
+		const audience = Resource.resolveAudience(p.getAll('resource'), issuer); // RFC 8707 s2
+		const claims = UserClaims.parseRequest(p.get('claims')); // OIDC Core s5.5
 
 		const prompts = (p.get('prompt') ?? '').split(' ').filter(Boolean);
 		if (prompts.includes('none') && prompts.length > 1) throw new OAuthError.InvalidRequest('prompt=none is exclusive');
@@ -298,7 +298,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		}
 
 		// Consent is automatic in this dev provider.
-		const code = Token.generate();
+		const code = OpaqueToken.generate();
 		const grant: Grant = {
 			client_id: client.client_id,
 			redirect_uri: redirectUri,
@@ -314,11 +314,11 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			// OIDC Core s2: auth_time is required when max_age was sent, and when asked for via `claims`.
 			include_auth_time: maxAge !== undefined || (claims.id_token !== undefined && 'auth_time' in claims.id_token),
 			acr: p.get('acr_values')?.split(' ')[0],
-			grant_id: Redacted.value(Token.generate(16)),
+			grant_id: Redacted.value(OpaqueToken.generate(16)),
 		};
 		// RFC 6749 s4.1.2 / checklist: only the hash of the code is stored, with a <= 60 s lifetime.
 		db.query('INSERT INTO codes(hash, data, exp) VALUES (?, ?, ?)').run(
-			await Token.hash(code),
+			await OpaqueToken.hash(code),
 			JSON.stringify(grant),
 			now() + codeTtl,
 		);
@@ -345,10 +345,10 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const username = (p.get('username') ?? '').trim().slice(0, 100);
 		if (!username) return page('Sign in', '<h1>Sign in</h1><p>Username is required.</p>', 400);
 		// shortcut: no CSRF token on this dev login form; SameSite=Lax limits cross-site cookie use.
-		const sid = Redacted.value(Token.generate());
-		const sub = await Token.hash(`user:${username}`);
+		const sid = Redacted.value(OpaqueToken.generate());
+		const sub = await OpaqueToken.hash(`user:${username}`);
 		db.query('INSERT INTO sessions(hash, username, sub, auth_time) VALUES (?, ?, ?, ?)').run(
-			await Token.hash(sid),
+			await OpaqueToken.hash(sid),
 			username,
 			sub,
 			now(),
@@ -374,7 +374,23 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const assertion = f.get('client_assertion');
 		if (assertion !== null) {
 			if (f.get('client_assertion_type') !== ClientAssertion.assertionType) throw fail();
-			const client = clients.get(f.get('client_id') ?? '');
+			// RFC 6749 s2.3: one authentication method per request.
+			if (basic !== undefined || f.has('client_secret')) {
+				throw new OAuthError.InvalidRequest('use only one client authentication method');
+			}
+			// RFC 7521 s4.2: `client_id` is optional with an assertion; the assertion's `sub` names the client.
+			// Peek at the unverified payload only to find the candidate; ClientAssertion.verify binds it below.
+			const peekSub = (): string | undefined => {
+				try {
+					const payload = JSON.parse(atob(assertion.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/'))) as {
+						sub?: unknown;
+					};
+					return typeof payload.sub === 'string' ? payload.sub : undefined;
+				} catch {
+					return undefined;
+				}
+			};
+			const client = clients.get(f.get('client_id') ?? peekSub() ?? '');
 			if (!client || client.method !== 'private_key_jwt' || !client.keys) throw fail();
 			const { jti, expiresAt } = await ClientAssertion.verify(assertion, {
 				issuer,
@@ -392,12 +408,12 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const method = basic ? 'client_secret_basic' : secret !== null ? 'client_secret_post' : 'none';
 		const client = clients.get(basic?.clientId ?? f.get('client_id') ?? '');
 		if (!client || client.method !== method) throw fail();
-		if (method !== 'none' && !(await Token.matchesHash(secret!, client.secretHash!))) throw fail();
+		if (method !== 'none' && !(await OpaqueToken.matchesHash(secret!, client.secretHash!))) throw fail();
 		return client;
 	};
 
 	const issueTokens = async (g: Grant, scope: string[], withNonce: boolean): Promise<Response> => {
-		const access = await signer.accessToken({
+		const access = await signer.signAccessToken({
 			sub: g.sub,
 			aud: g.audience,
 			client_id: g.client_id,
@@ -412,22 +428,20 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		};
 		if (scope.includes('openid')) {
 			// OIDC Core s3.1.3.6/s2: aud = client_id, nonce echoed, at_hash binds the ID token to the access token.
-			body.id_token = await signer.idToken(
-				{
-					...Claims.select(userClaims(g.username, g.sub), { scopes: [], request: g.claims, target: 'id_token' }),
+			body.id_token = await signer.signIdToken({
+					...UserClaims.select(userClaims(g.username, g.sub), { scopes: [], request: g.claims, target: 'id_token' }),
 					sub: g.sub,
 					aud: g.client_id,
 					nonce: withNonce ? g.nonce : undefined,
 					auth_time: g.include_auth_time ? g.auth_time : undefined,
 					acr: g.acr,
 				},
-				{ accessToken: access },
-			);
+				{ accessToken: access },);
 		}
 		if (g.scope.length && clients.get(g.client_id)?.grant_types.includes('refresh_token')) {
-			const refresh = Token.generate();
+			const refresh = OpaqueToken.generate();
 			db.query('INSERT INTO refresh(hash, grant_id, exp) VALUES (?, ?, ?)').run(
-				await Token.hash(refresh),
+				await OpaqueToken.hash(refresh),
 				g.grant_id,
 				now() + refreshTtl,
 			);
@@ -447,7 +461,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		if (type === 'authorization_code') {
 			const code = f.get('code');
 			if (!code) throw new OAuthError.InvalidRequest('code is required');
-			const h = await Token.hash(code);
+			const h = await OpaqueToken.hash(code);
 			// Checklist: consume atomically. Everything after this point happens only if the delete found the row.
 			const row = db.query('DELETE FROM codes WHERE hash = ? RETURNING data, exp').get(h) as
 				| { data: string; exp: number }
@@ -471,7 +485,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		if (type === 'refresh_token') {
 			const rt = f.get('refresh_token');
 			if (!rt) throw new OAuthError.InvalidRequest('refresh_token is required');
-			const h = await Token.hash(rt);
+			const h = await OpaqueToken.hash(rt);
 			const row = db.query('SELECT grant_id, used, exp FROM refresh WHERE hash = ?').get(h) as
 				| { grant_id: string; used: number; exp: number }
 				| null;
@@ -496,9 +510,9 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 				throw new OAuthError.UnauthorizedClient('client_credentials not allowed');
 			}
 			const scope = Scope.parse(f.get('scope')).filter((s) => scopesSupported.includes(s) && s !== 'openid');
-			const access = await signer.accessToken({
+			const access = await signer.signAccessToken({
 				sub: client.client_id,
-				aud: Resource.audience(f.getAll('resource'), issuer),
+				aud: Resource.resolveAudience(f.getAll('resource'), issuer),
 				client_id: client.client_id,
 				scope: Scope.format(scope),
 			});
@@ -510,7 +524,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 	// ---- userinfo (OIDC Core s5.3) --------------------------------------------------------------
 
 	const userinfo = async (req: Request): Promise<Response> => {
-		let bearer = Bearer.extract(req.headers);
+		let bearer = Bearer.parse(req.headers);
 		// RFC 6750 s2.2: POST form-encoded body is also allowed.
 		if (bearer === undefined && req.method === 'POST') bearer = (await form(req)).get('access_token') ?? undefined;
 		if (bearer === undefined) throw new OAuthError.InvalidToken();
@@ -520,7 +534,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		if (!g) throw new OAuthError.InvalidToken('token is invalid'); // revoked grant or client_credentials token
 		if (!v.scope.includes('openid')) throw new OAuthError.InsufficientScope('openid');
 		return OAuthResponse.json(
-			Claims.select(userClaims(g.username, g.sub), { scopes: v.scope, request: g.claims, target: 'userinfo' }),
+			UserClaims.select(userClaims(g.username, g.sub), { scopes: v.scope, request: g.claims, target: 'userinfo' }),
 		);
 	};
 
@@ -528,7 +542,7 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 
 	/** The grant and owner behind an access (JWT) or refresh token, if still live. */
 	const resolve = async (t: string): Promise<{ grant: Grant; refresh?: { exp: number } ; access?: AccessTokenVerifier.Verified } | undefined> => {
-		const row = db.query('SELECT grant_id, used, exp FROM refresh WHERE hash = ?').get(await Token.hash(t)) as
+		const row = db.query('SELECT grant_id, used, exp FROM refresh WHERE hash = ?').get(await OpaqueToken.hash(t)) as
 			| { grant_id: string; used: number; exp: number }
 			| null;
 		if (row) {

@@ -67,12 +67,12 @@ describe('RFC 8725 s3.1 key failures (B1)', () => {
 	});
 
 	it('answers an unreachable remote key set with TemporarilyUnavailable', async () => {
-		const keys = Keys.remoteSet('http://127.0.0.1:1/jwks', { timeoutDuration: 500 });
+		const keys = Keys.remoteResolver('http://127.0.0.1:1/jwks', { timeoutDuration: 500 });
 		await assert.rejects(AccessToken.verify(await raw(header, full()), { ...options, keys }), TemporarilyUnavailable);
 	});
 
 	it('keeps an unknown kid in a local set at InvalidToken', async () => {
-		const keys = Keys.localSet({ keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })] });
+		const keys = Keys.localResolver({ keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })] });
 		const jwt = await raw({ ...header, kid: 'other' }, full());
 		await assert.rejects(AccessToken.verify(jwt, { ...options, keys }), InvalidToken);
 	});
@@ -146,5 +146,33 @@ describe('RFC 9449 s7.1 cnf', () => {
 			}),
 			InvalidToken,
 		);
+	});
+});
+
+describe('RFC 7519 s4.1.2, s4.1.7 and RFC 7800 s3.1 claim types', () => {
+	it('rejects non-string sub or jti', async () => {
+		await assert.rejects(AccessToken.verify(await raw({ alg: 'ES256', typ: 'at+jwt' }, full({ sub: 5 })), options), InvalidToken);
+		await assert.rejects(AccessToken.verify(await raw({ alg: 'ES256', typ: 'at+jwt' }, full({ jti: 7 })), options), InvalidToken);
+	});
+
+	it('rejects an array cnf even with confirm', async () => {
+		await assert.rejects(
+			AccessToken.verify(await raw({ alg: 'ES256', typ: 'at+jwt' }, full({ cnf: ['x'] })), { ...options, confirm: () => {} }),
+			InvalidToken,
+		);
+	});
+
+	it('rejects an unsigned alg none token (design D9)', async () => {
+		const b64 = (value: string): string => btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+		const jwt = `${b64(JSON.stringify({ alg: 'none', typ: 'at+jwt' }))}.${b64(JSON.stringify(full()))}.`;
+		await assert.rejects(AccessToken.verify(jwt, options), InvalidToken);
+	});
+});
+
+describe('design D9 key fetch failures are not bad credentials', () => {
+	it('answers 503 when the remote key set cannot be fetched', async () => {
+		const keys = Keys.remoteResolver('http://127.0.0.1:9/jwks', { timeoutDuration: 500 });
+		const jwt = await AccessToken.sign(claims, base);
+		await assert.rejects(AccessToken.verify(jwt, { issuer, audience, keys }), TemporarilyUnavailable);
 	});
 });

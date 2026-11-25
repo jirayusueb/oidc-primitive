@@ -31,7 +31,7 @@ const isLoopback = (url: URL): boolean => url.protocol === 'http:' && loopbackHo
  * exception is the port of `http://127.0.0.1` and `http://[::1]` (RFC 8252 s7.3).
  * Returns the registered URI that matched.
  */
-export const match = (requested: string, registered: ReadonlyArray<string>): string | undefined => {
+export const find = (requested: string, registered: ReadonlyArray<string>): string | undefined => {
 	if (registered.includes(requested)) return requested;
 	if (!URL.canParse(requested)) return undefined;
 	const req = new URL(requested);
@@ -45,8 +45,8 @@ export const match = (requested: string, registered: ReadonlyArray<string>): str
 		portless.port = '';
 		return reg.href === portless.href;
 	});
-};
+}
 
-/** True when `requested` matches a registered URI under `match`. */
+/** True when `requested` matches a registered URI under `find`. */
 export const matches = (requested: string, registered: ReadonlyArray<string>): boolean =>
-	match(requested, registered) !== undefined;
+	find(requested, registered) !== undefined;

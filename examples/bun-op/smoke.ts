@@ -1,6 +1,6 @@
 // End-to-end check of the example OP: discovery -> authorize (PKCE S256 + nonce) -> login -> token -> userinfo
 // -> refresh -> introspect -> revoke, plus code-reuse and refresh-reuse revocation.
-import { IdToken, Pkce, Redacted, Token } from 'oidc-primitive';
+import { IdToken, OpaqueToken, Pkce, Redacted } from 'oidc-primitive';
 import { start } from './index.ts';
 
 const probe = Bun.serve({ port: 0, fetch: () => new Response() });
@@ -40,14 +40,14 @@ try {
 	const jwks = (await (await fetch(disc.jwks_uri)).json()) as { keys: { alg: string; d?: string }[] };
 	check(jwks.keys[0]?.alg === 'RS256' && !jwks.keys[0]?.d, 'jwks has public RS256 key only');
 
-	const verifier = Redacted.value(Token.generate(32));
+	const verifier = Redacted.value(OpaqueToken.generate(32));
 	const authz = (extra: Record<string, string> = {}, challenge = true): string =>
 		`${issuer}/authorize?` +
 		new URLSearchParams({
 			response_type: 'code', client_id: 'demo', redirect_uri: redirect, scope: 'openid profile email offline_access',
 			state: 'st4te', nonce: 'n0nce', ...(challenge && { code_challenge: challengeOf, code_challenge_method: 'S256' }), ...extra,
 		});
-	const challengeOf = await Pkce.challenge(verifier);
+	const challengeOf = await Pkce.deriveChallenge(verifier);
 
 	const bad = await fetch(authz({ redirect_uri: 'https://evil.example/cb' }), { redirect: 'manual' });
 	check(bad.status === 400 && (await bad.text()).includes('Invalid authorization request'), 'bad redirect_uri -> 400 page');

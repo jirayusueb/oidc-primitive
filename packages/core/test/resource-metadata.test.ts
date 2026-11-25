@@ -32,3 +32,12 @@ describe('RFC 9728 s2 protected resource metadata', () => {
 		assert.equal(ResourceMetadata.wellKnownUrl('https://api.example'), 'https://api.example/.well-known/oauth-protected-resource');
 	});
 });
+
+describe('RFC 9728 s3.1 well-known URL edge cases', () => {
+	it('keeps the resource query and drops a terminating slash', () => {
+		assert.equal(
+			ResourceMetadata.wellKnownUrl('https://api.example/v1/?x=1'),
+			'https://api.example/.well-known/oauth-protected-resource/v1?x=1',
+		);
+	});
+});

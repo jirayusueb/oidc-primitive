@@ -39,7 +39,7 @@ describe('RFC 7517 s5 local JWK Set resolver', () => {
 	it('verifies a token through the set and picks the key by kid', async () => {
 		const a = await Keys.generate('ES256');
 		const b = await Keys.generate('ES256');
-		const keys = Keys.localSet({
+		const keys = Keys.localResolver({
 			keys: [await Keys.publicJwk(a.publicKey, { kid: 'a', alg: 'ES256' }), await Keys.publicJwk(b.publicKey, { kid: 'b', alg: 'ES256' })],
 		});
 		const options = { issuer: 'https://op.example', audience: 'https://rs.example', keys };

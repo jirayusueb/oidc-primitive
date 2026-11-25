@@ -309,7 +309,7 @@ const byCode: Record<string, (description?: string) => OAuthError> = {
  * the RFC defines (`options.status` is ignored for it); any other code, for extension specs
  * such as `use_dpop_nonce`, builds a base `OAuthError` honoring `options`.
  */
-export const make = (code: Code | (string & {}), options?: Options): OAuthError => {
+export const fromCode = (code: Code | (string & {}), options?: Options): OAuthError => {
 	const known = Object.hasOwn(byCode, code) ? byCode[code] : undefined;
 	return known ? known(options?.description) : new OAuthError(code, options);
 };

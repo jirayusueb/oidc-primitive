@@ -20,7 +20,7 @@ describe('RFC 9700 s4.1.3 exact redirect matching', () => {
 	});
 
 	it('lets the loopback port vary (RFC 8252 s7.3)', () => {
-		assert.equal(RedirectUri.match('http://127.0.0.1:51004/cb', registered), 'http://127.0.0.1/cb');
+		assert.equal(RedirectUri.find('http://127.0.0.1:51004/cb', registered), 'http://127.0.0.1/cb');
 		assert.equal(RedirectUri.matches('http://[::1]:8080/cb', registered), true);
 		assert.equal(RedirectUri.matches('http://127.0.0.1:51004/other', registered), false);
 		assert.equal(RedirectUri.matches('http://localhost:51004/cb', ['http://localhost/cb']), false);

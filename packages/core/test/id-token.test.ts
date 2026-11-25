@@ -140,3 +140,18 @@ describe('OIDC Core s3.1.2.1 id_token_hint', () => {
 		await assert.rejects(IdToken.verify(jwt, { ...options, keys: new Uint8Array(32) as never }), InvalidRequest);
 	});
 });
+
+describe('OIDC Core s2 azp', () => {
+	it('refuses a clientId that is not in aud', async () => {
+		await assert.rejects(IdToken.sign({ sub: 'u', aud: ['a', 'b'] }, { ...base, clientId: 'z' }), TypeError);
+	});
+});
+
+describe('design D9 algorithm allow-list', () => {
+	it('rejects an unsigned alg none token', async () => {
+		const b64 = (value: string): string => btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+		const payload = { sub: 'u', iss: issuer, aud: 'c', iat: Math.floor(Date.now() / 1000) - 10, exp: Math.floor(Date.now() / 1000) + 600 };
+		const jwt = `${b64(JSON.stringify({ alg: 'none' }))}.${b64(JSON.stringify(payload))}.`;
+		await assert.rejects(IdToken.verify(jwt, { issuer, audience: 'c', keys: publicKey }), InvalidRequest);
+	});
+});

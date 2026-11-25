@@ -9,11 +9,11 @@ const expectType = <T extends true>(): T => true as T;
 type Bound = keyof TokenSigner.Options;
 
 // Class methods take the function's arguments minus the bound options.
-expectType<Equal<Parameters<TokenSigner.TokenSigner['idToken']>[1], Omit<IdToken.SignOptions, Bound> | undefined>>();
+expectType<Equal<Parameters<TokenSigner.TokenSigner['signIdToken']>[1], Omit<IdToken.SignOptions, Bound> | undefined>>();
 expectType<
-	Equal<Parameters<TokenSigner.TokenSigner['accessToken']>[1], Omit<AccessToken.SignOptions, Bound> | undefined>
+	Equal<Parameters<TokenSigner.TokenSigner['signAccessToken']>[1], Omit<AccessToken.SignOptions, Bound> | undefined>
 >();
-expectType<Equal<Parameters<TokenSigner.TokenSigner['idToken']>[0], IdToken.Claims>>();
+expectType<Equal<Parameters<TokenSigner.TokenSigner['signIdToken']>[0], IdToken.Claims>>();
 
 describe('Scope literals flow into verifier results (design D5)', () => {
 	it('types granted scopes by the declaration', async () => {

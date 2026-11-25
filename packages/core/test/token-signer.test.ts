@@ -8,14 +8,14 @@ const signer = TokenSigner.make({ issuer: 'https://op.example', key: privateKey,
 
 describe('RFC 9068 and OIDC Core token signing with a bound key', () => {
 	it('signs an access token verifiable with the public key', async () => {
-		const jwt = await signer.accessToken({ sub: 'u', aud: 'https://rs', client_id: 'c' }, { expiresIn: '1m' });
+		const jwt = await signer.signAccessToken({ sub: 'u', aud: 'https://rs', client_id: 'c' }, { expiresIn: '1m' });
 		assert.equal(decodeProtectedHeader(jwt).typ, 'at+jwt');
 		const v = await AccessToken.verify(jwt, { issuer: 'https://op.example', audience: 'https://rs', keys: publicKey });
 		assert.ok([60, 61].includes(v.exp - v.iat)); // a time span string is read by jose against its own clock
 	});
 
 	it('takes clientId and accessToken per call, so one signer serves every client', async () => {
-		const jwt = await signer.idToken({ sub: 'u', aud: ['c', 'd'] }, { clientId: 'c', accessToken: 'at' });
+		const jwt = await signer.signIdToken({ sub: 'u', aud: ['c', 'd'] }, { clientId: 'c', accessToken: 'at' });
 		const c = decodeJwt(jwt);
 		assert.equal(c.azp, 'c');
 		assert.ok(c.at_hash);

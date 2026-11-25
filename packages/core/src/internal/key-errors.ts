@@ -11,8 +11,9 @@ class KeyFetchFailure extends Error {}
  */
 export const isKeyFetchFailure = (error: unknown): boolean => error instanceof KeyFetchFailure;
 
-/** A fetch or timeout failure from a resolver. Other jose errors (unknown `kid`, bad key) are the token's fault. */
+/** A fetch, timeout or invalid key-set failure from a resolver. Other jose errors (unknown `kid`, bad key) are the token's fault. */
 const isFetchError = (error: unknown): boolean =>
+	error instanceof errors.JWKSInvalid ||
 	error instanceof errors.JWKSTimeout ||
 	!(error instanceof errors.JOSEError) ||
 	error.code === 'ERR_JOSE_GENERIC';

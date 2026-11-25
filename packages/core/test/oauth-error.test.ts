@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import { OAuthError } from '../src/index.ts';
+import { AccessToken, ClientAssertion, IdToken, Keys, OAuthError, Pkce } from '../src/index.ts';
 
 describe('RFC 6749 s5.2 and s4.1.2.1 error responses', () => {
 	it('builds a no-store JSON error', async () => {
@@ -43,7 +43,7 @@ describe('RFC 6749 s5.2 and s4.1.2.1 error responses', () => {
 	});
 
 	it('supports extension codes and tags', () => {
-		const err = OAuthError.make('use_dpop_nonce', { status: 401 });
+		const err = OAuthError.fromCode('use_dpop_nonce', { status: 401 });
 		assert.equal(err.code, 'use_dpop_nonce');
 		assert.equal(new OAuthError.InvalidGrant()._tag, 'InvalidGrant');
 		assert.ok(new OAuthError.InvalidGrant() instanceof OAuthError.OAuthError);
@@ -66,7 +66,7 @@ describe('RFC 6750 s3.1 MissingToken', () => {
 	});
 });
 
-describe('RFC 6749 s5.2 and RFC 6750 s3.1 OAuthError.make', () => {
+describe('RFC 6749 s5.2 and RFC 6750 s3.1 OAuthError.fromCode', () => {
 	const codes = [
 		'invalid_redirect_uri', 'invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client',
 		'unsupported_grant_type', 'unsupported_response_type', 'invalid_scope', 'invalid_target', 'access_denied',
@@ -77,7 +77,7 @@ describe('RFC 6749 s5.2 and RFC 6750 s3.1 OAuthError.make', () => {
 
 	it('returns the subclass for every registered code', () => {
 		for (const code of codes) {
-			const error = OAuthError.make(code, { description: 'd' });
+			const error = OAuthError.fromCode(code, { description: 'd' });
 			assert.equal(error.code, code);
 			assert.notEqual(error._tag, 'OAuthError', code);
 			assert.equal(error.description, 'd');
@@ -85,20 +85,49 @@ describe('RFC 6749 s5.2 and RFC 6750 s3.1 OAuthError.make', () => {
 	});
 
 	it('keeps status and challenge of the subclass', () => {
-		const invalidToken = OAuthError.make('invalid_token');
+		const invalidToken = OAuthError.fromCode('invalid_token');
 		assert.equal(invalidToken.status, 401);
 		assert.match(invalidToken.toResponse().headers.get('www-authenticate') ?? '', /^Bearer /);
-		const scope = OAuthError.make('insufficient_scope');
+		const scope = OAuthError.fromCode('insufficient_scope');
 		assert.equal(scope.status, 403);
 		assert.match(scope.toResponse().headers.get('www-authenticate') ?? '', /^Bearer /);
-		assert.equal(OAuthError.make('temporarily_unavailable').status, 503);
-		assert.equal(OAuthError.make('invalid_client').status, 401);
+		assert.equal(OAuthError.fromCode('temporarily_unavailable').status, 503);
+		assert.equal(OAuthError.fromCode('invalid_client').status, 401);
 	});
 
 	it('builds a base error for an unknown extension code', () => {
-		const error = OAuthError.make('use_dpop_nonce', { status: 401 });
+		const error = OAuthError.fromCode('use_dpop_nonce', { status: 401 });
 		assert.equal(error._tag, 'OAuthError');
 		assert.equal(error.status, 401);
-		assert.equal(OAuthError.make('toString')._tag, 'OAuthError');
+		assert.equal(OAuthError.fromCode('toString')._tag, 'OAuthError');
+	});
+});
+
+describe('RFC 6750 s3 challenge safety', () => {
+	it('drops an unsafe description from the Bearer challenge instead of throwing', () => {
+		const res = new OAuthError.InvalidToken('café "x"').toResponse();
+		assert.equal(res.status, 401);
+		assert.equal(res.headers.get('www-authenticate'), 'Bearer error="invalid_token"');
+	});
+});
+
+describe('design G5 errors carry no secret input', () => {
+	it('never echoes the credential a primitive rejected', async () => {
+		const secret = 's3cr3tTokenValue0123456789abcdefghijklmnopq';
+		const issuer = 'https://op.example';
+		const { publicKey } = await Keys.generate('ES256');
+		const rejected: unknown[] = await Promise.all([
+			AccessToken.verify(secret, { issuer, audience: 'https://rs', keys: publicKey }).catch((e: unknown) => e),
+			ClientAssertion.verify(secret, { issuer, clientId: 'c', keys: publicKey }).catch((e: unknown) => e),
+			IdToken.verify(secret, { issuer, audience: 'c', keys: publicKey }).catch((e: unknown) => e),
+			Pkce.verify(secret, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM').catch((e: unknown) => e),
+		]);
+		for (const error of rejected) {
+			assert.ok(error instanceof OAuthError.OAuthError);
+			const body = await error.toResponse().text();
+			for (const out of [String(error), `${error}`, JSON.stringify(error), body]) {
+				assert.equal(out.includes(secret), false, out);
+			}
+		}
 	});
 });

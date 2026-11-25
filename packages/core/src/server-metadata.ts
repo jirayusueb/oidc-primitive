@@ -3,7 +3,7 @@ import { assertionAlgorithms } from './keys.ts';
 export interface Endpoints {
 	readonly authorization: string;
 	readonly token: string;
-	readonly jwks: string;
+	readonly jwksUri: string;
 	readonly userinfo?: string;
 	readonly introspection?: string;
 	readonly revocation?: string;
@@ -76,7 +76,7 @@ const compact = <T extends object>(doc: T): T =>
 	Object.fromEntries(Object.entries(doc).filter(([, value]) => value !== undefined)) as T;
 
 /** RFC 8414 s2 and OIDC Discovery s3 document in snake_case. */
-export const authorizationServer = (options: AuthorizationServerOptions): AuthorizationServerMetadata => {
+export const make = (options: AuthorizationServerOptions): AuthorizationServerMetadata => {
 	const { issuer, endpoints: e } = options;
 	parseIssuer(issuer);
 	const authMethods = options.tokenEndpointAuthMethodsSupported ?? ['client_secret_basic', 'client_secret_post', 'private_key_jwt'];
@@ -92,7 +92,7 @@ export const authorizationServer = (options: AuthorizationServerOptions): Author
 		issuer,
 		authorization_endpoint: e.authorization,
 		token_endpoint: e.token,
-		jwks_uri: e.jwks,
+		jwks_uri: e.jwksUri,
 		userinfo_endpoint: e.userinfo,
 		introspection_endpoint: e.introspection,
 		revocation_endpoint: e.revocation,

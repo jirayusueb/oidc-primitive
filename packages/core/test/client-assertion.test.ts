@@ -65,7 +65,7 @@ describe('RFC 7523 s3 and RFC 10070 s4 client assertion', () => {
 	});
 
 	it('verifies through a local JWK set', async () => {
-		const keys = Keys.localSet({ keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })] });
+		const keys = Keys.localResolver({ keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })] });
 		assert.equal((await ClientAssertion.verify(await sign({}), { issuer, clientId, keys })).jti, 'j1');
 	});
 
@@ -75,11 +75,19 @@ describe('RFC 7523 s3 and RFC 10070 s4 client assertion', () => {
 	});
 
 	it('answers an unreachable remote key set with TemporarilyUnavailable', async () => {
-		const keys = Keys.remoteSet('http://127.0.0.1:1/jwks', { timeoutDuration: 500 });
+		const keys = Keys.remoteResolver('http://127.0.0.1:1/jwks', { timeoutDuration: 500 });
 		await assert.rejects(ClientAssertion.verify(await sign({}), { issuer, clientId, keys }), TemporarilyUnavailable);
 	});
 
 	it('exposes the assertion type', () => {
 		assert.equal(ClientAssertion.assertionType, 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer');
+	});
+});
+
+describe('RFC 7519 s4.1.7 jti', () => {
+	it('rejects a non-string or empty jti', async () => {
+		for (const jti of [5, { a: 1 }, ['x'], true, '']) {
+			await rejects(sign({ jti } as never));
+		}
 	});
 });

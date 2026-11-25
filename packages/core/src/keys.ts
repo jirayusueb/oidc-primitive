@@ -57,13 +57,11 @@ export const jwks = async (entries: ReadonlyArray<Entry>): Promise<{ keys: JWK[]
 /** RFC 7638 JWK thumbprint (SHA-256, base64url). */
 export const thumbprint = (jwk: JWK): Promise<string> => calculateJwkThumbprint(jwk);
 
-/** What token verification accepts: a public key, or a resolver from `localSet` / `remoteSet`. */
+/** What token verification accepts: a public key, or a resolver from `localResolver` / `remoteResolver`. */
 export type VerifyKey = CryptoKey | JWK | JWTVerifyGetKey;
 
 /** A resolver over a JWK Set held locally, for example a client's registered `jwks`. */
-export const localSet = (set: { readonly keys: ReadonlyArray<JWK> }): JWTVerifyGetKey =>
-	createLocalJWKSet({ keys: [...set.keys] });
+export const localResolver = (set: { readonly keys: ReadonlyArray<JWK> }): JWTVerifyGetKey => createLocalJWKSet({ keys: [...set.keys] })
 
 /** A caching resolver over a remote `jwks_uri`; jose refetches once on an unknown `kid`. */
-export const remoteSet = (url: string | URL, options?: RemoteJWKSetOptions): JWTVerifyGetKey =>
-	createRemoteJWKSet(new URL(url), options);
+export const remoteResolver = (url: string | URL, options?: RemoteJWKSetOptions): JWTVerifyGetKey => createRemoteJWKSet(new URL(url), options)

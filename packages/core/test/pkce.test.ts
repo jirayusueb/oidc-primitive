@@ -8,7 +8,7 @@ const challenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 
 describe('RFC 7636 s4.2 S256 challenge', () => {
 	it('matches the Appendix B vector', async () => {
-		assert.equal(await Pkce.challenge(verifier), challenge);
+		assert.equal(await Pkce.deriveChallenge(verifier), challenge);
 	});
 
 	it('accepts the matching verifier', async () => {
@@ -62,5 +62,13 @@ describe('RFC 9700 s4.8.2 downgrade', () => {
 	it('requires PKCE unless the host exempts the client', async () => {
 		await assert.rejects(Pkce.verify(undefined, undefined), OAuthError.InvalidGrant);
 		await Pkce.verify(undefined, undefined, { required: false });
+	});
+});
+
+describe('RFC 7636 s4.2 derivation', () => {
+	it('rejects a malformed verifier asynchronously', async () => {
+		const pending = Pkce.deriveChallenge('short');
+		assert.ok(pending instanceof Promise);
+		await assert.rejects(pending, OAuthError.InvalidRequest);
 	});
 });

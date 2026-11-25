@@ -13,10 +13,10 @@ export const isChallenge = (value: unknown): value is string =>
 	typeof value === 'string' && challengePattern.test(value);
 
 /** The S256 code challenge for `verifier` (RFC 7636 s4.2). */
-export const challenge = async (verifier: string): Promise<string> => {
+export const deriveChallenge = async (verifier: string): Promise<string> => {
 	if (!isVerifier(verifier)) throw new InvalidRequest('code_verifier is malformed');
 	return sha256Base64url(verifier);
-};
+}
 
 /**
  * Check the authorization request's challenge method. Only S256 is accepted

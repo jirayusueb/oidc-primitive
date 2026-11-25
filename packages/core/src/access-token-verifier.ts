@@ -43,8 +43,8 @@ export class AccessTokenVerifier<S extends string = string> {
 	}
 
 	/** Verify the bearer token in `Authorization`; a missing one throws `MissingToken` (RFC 6750 s3.1). */
-	async verifyRequest(headers: Headers): Promise<Verified<S>> {
-		const token = Bearer.extract(headers);
+	async verifyHeaders(headers: Headers): Promise<Verified<S>> {
+		const token = Bearer.parse(headers);
 		if (token === undefined) throw new MissingToken();
 		return this.verify(token);
 	}

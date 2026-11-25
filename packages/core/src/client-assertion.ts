@@ -10,7 +10,7 @@ export const assertionType = 'urn:ietf:params:oauth:client-assertion-type:jwt-be
 export interface VerifyOptions {
 	readonly issuer: string;
 	readonly clientId: string;
-	/** A public key, or a resolver from `Keys.remoteSet` (a `jwks_uri`) or `Keys.localSet` (registered `jwks`). */
+	/** A public key, or a resolver from `Keys.remoteResolver` (a `jwks_uri`) or `Keys.localResolver` (registered `jwks`). */
 	readonly keys: VerifyKey;
 	/** Seconds of clock skew, default 30. */
 	readonly clockTolerance?: number;

@@ -10,7 +10,7 @@ import { Redacted } from './redacted.ts';
 
 /** A random base64url credential of `bytes` random bytes (default 32, minimum 16). */
 export const generate = (bytes = 32): Redacted<string> => {
-	if (!Number.isInteger(bytes) || bytes < 16) throw new RangeError('Token.generate needs at least 16 bytes');
+	if (!Number.isInteger(bytes) || bytes < 16) throw new RangeError('OpaqueToken.generate needs at least 16 bytes');
 	return Redacted.make(base64url.encode(crypto.getRandomValues(new Uint8Array(bytes))));
 };
 

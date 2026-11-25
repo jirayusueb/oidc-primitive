@@ -9,7 +9,7 @@ const bearer = /^Bearer +([A-Za-z0-9\-._~+/]+=*)$/i;
  * (RFC 6750 s2.1). Returns `undefined` when no Bearer credential is present and throws
  * `InvalidToken` when one is malformed.
  */
-export const extract = (headers: Headers): string | undefined => {
+export const parse = (headers: Headers): string | undefined => {
 	const value = headers.get('authorization');
 	if (value === null || !/^Bearer(?: |$)/i.test(value)) return undefined;
 	const match = bearer.exec(value);

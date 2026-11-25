@@ -8,18 +8,18 @@ const headers = (authorization?: string): Headers =>
 
 describe('RFC 6750 s2.1 Authorization header', () => {
 	it('extracts a b64token', () => {
-		assert.equal(Bearer.extract(headers('Bearer abc.DEF-_~+/=')), 'abc.DEF-_~+/=');
-		assert.equal(Bearer.extract(headers('bearer abc')), 'abc');
+		assert.equal(Bearer.parse(headers('Bearer abc.DEF-_~+/=')), 'abc.DEF-_~+/=');
+		assert.equal(Bearer.parse(headers('bearer abc')), 'abc');
 	});
 
 	it('returns undefined when absent or another scheme; never reads the query', () => {
-		assert.equal(Bearer.extract(headers()), undefined);
-		assert.equal(Bearer.extract(headers('Basic Zm9vOmJhcg==')), undefined);
+		assert.equal(Bearer.parse(headers()), undefined);
+		assert.equal(Bearer.parse(headers('Basic Zm9vOmJhcg==')), undefined);
 	});
 
 	it('throws InvalidToken when malformed', () => {
 		for (const bad of ['Bearer', 'Bearer ', 'Bearer a b', 'Bearer a$b', 'Bearer =']) {
-			assert.throws(() => Bearer.extract(headers(bad)), InvalidToken);
+			assert.throws(() => Bearer.parse(headers(bad)), InvalidToken);
 		}
 	});
 });

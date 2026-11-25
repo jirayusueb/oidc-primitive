@@ -2,7 +2,7 @@ import { InvalidRequest } from './oauth-error.ts';
 
 export type Target = 'userinfo' | 'id_token';
 export type RequestMap = Readonly<Record<string, unknown>>;
-export interface ClaimsRequest {
+export interface Request {
 	readonly userinfo?: RequestMap;
 	readonly id_token?: RequestMap;
 }
@@ -42,7 +42,7 @@ const parseMap = (value: unknown): RequestMap | undefined => {
 };
 
 /** OIDC Core s5.5: parse the `claims` request parameter. */
-export const parseRequest = (json: string | null | undefined): ClaimsRequest => {
+export const parseRequest = (json: string | null | undefined): Request => {
 	if (json === null || json === undefined) return {};
 	let parsed: unknown;
 	try {
@@ -58,7 +58,7 @@ export const parseRequest = (json: string | null | undefined): ClaimsRequest => 
 
 export interface SelectOptions {
 	readonly scopes: Iterable<string>;
-	readonly request?: ClaimsRequest;
+	readonly request?: Request;
 	readonly target: Target;
 }
 
