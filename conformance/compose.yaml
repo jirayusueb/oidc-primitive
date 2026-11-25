@@ -38,7 +38,7 @@ services:
       - server
 
   op:
-    image: oven/bun:1.4.4-alpine@sha256:b356fb856784b61901cbf8a71d50de809cd928a7610fc3ff816c912ec618223c
+    image: oven/bun:1.4.4-alpine@sha256:4cf82f5686b196504fe119db3fcd9185b191f82ece82c40680e597228ec6070a
     working_dir: /repo
     command: ['bun', 'examples/bun-op/index.ts']
     volumes:
