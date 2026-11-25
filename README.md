@@ -15,10 +15,10 @@ import { AccessTokenVerifier, Keys, Pkce, TokenSigner } from 'oidc-primitive';
 await Pkce.verify(codeVerifier, storedChallenge); // throws OAuthError.InvalidGrant on mismatch
 
 const signer = TokenSigner.make({ issuer, key: privateKey, kid: 'k1', alg: 'RS256' });
-const accessToken = await signer.accessToken({ sub, aud: 'https://api.example.com', client_id: clientId });
+const accessToken = await signer.signAccessToken({ sub, aud: 'https://api.example.com', client_id: clientId });
 
-const api = AccessTokenVerifier.make({ issuer, audience: 'https://api.example.com', keys: Keys.remoteSet(`${issuer}/jwks`) });
-const { claims } = await api.verifyRequest(request.headers);
+const api = AccessTokenVerifier.make({ issuer, audience: 'https://api.example.com', keys: Keys.remoteResolver(`${issuer}/jwks`) });
+const { claims } = await api.verifyHeaders(request.headers);
 ```
 
 See the [docs](https://oidc-primitive.vercel.app) for guides and the API reference, or the [package README](packages/core/README.md) for every module and its defaults.
