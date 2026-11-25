@@ -41,11 +41,11 @@ In the authorization code flow, your app handles every request and stores every 
   participant R as Resource server
   C->>A: GET /authorize<br/>redirect_uri, code_challenge
   A->>L: RedirectUri.matches<br/>Pkce.validateMethod
-  A->>L: Token.generate<br/>Token.hash
+  A->>L: OpaqueToken.generate<br/>OpaqueToken.hash
   Note over A: store code hash<br/>TTL 60 s or less
   A-->>C: 303 with code and iss<br/>OAuthResponse.redirect
   C->>A: POST /token<br/>code, code_verifier
-  A->>L: ClientSecret.parseBasic<br/>Token.matchesHash
+  A->>L: ClientSecret.parseBasic<br/>OpaqueToken.matchesHash
   Note over A: consume code hash<br/>atomically
   A->>L: Pkce.verify
   A->>L: IdToken.sign<br/>AccessToken.sign
@@ -64,11 +64,11 @@ The library uses Web APIs (`Request`, `Response`, `Headers`, `URL`, `crypto.subt
 The package root exports each module as a namespace.
 
 ```ts
-import { Pkce, Token } from 'oidc-primitive';
+import { Pkce, OpaqueToken } from 'oidc-primitive';
 
 const verifier = 'a'.repeat(43);
-const challenge = await Pkce.challenge(verifier);
-const code = Token.generate();
+const challenge = await Pkce.deriveChallenge(verifier);
+const code = OpaqueToken.generate();
 ```
 
 Parameters that name a value you looked up (a stored challenge, a registered URI list) are plain arguments. The library never fetches them.
@@ -78,23 +78,23 @@ Parameters that name a value you looked up (a stored challenge, a registered URI
 		src={modules}
 		widths={[768, 1536]}
 		sizes="(min-width: 50rem) 46rem, 100vw"
-		alt="The 20 modules grouped in five columns. Authorization requests: Pkce, RedirectUri, Scope, Resource. Client authentication: ClientSecret, ClientAssertion, Token. Tokens and keys: IdToken, AccessToken, TokenSigner, Keys. Resource servers: AccessTokenVerifier, Bearer, ResourceMetadata. Discovery and responses: Metadata, Claims, Introspection, OAuthResponse, OAuthError, Redacted."
+		alt="The 20 modules grouped in five columns. Authorization requests: Pkce, RedirectUri, Scope, Resource. Client authentication: ClientSecret, ClientAssertion, OpaqueToken. Tokens and keys: IdToken, AccessToken, TokenSigner, Keys. Resource servers: AccessTokenVerifier, Bearer, ResourceMetadata. Discovery and responses: ServerMetadata, UserClaims, Introspection, OAuthResponse, OAuthError, Redacted."
 	/>
 </figure>
 
 ## Secrets are `Redacted`
 
-[Token](/reference/token/) generates credentials as `Redacted<string>`. A `Redacted` value prints as `<redacted>` in strings, JSON and console output. [OAuthResponse](/reference/oauth-response/) unwraps it when it writes a response body.
+[OpaqueToken](/reference/opaque-token/) generates credentials as `Redacted<string>`. A `Redacted` value prints as `<redacted>` in strings, JSON and console output. [OAuthResponse](/reference/oauth-response/) unwraps it when it writes a response body.
 
 ```ts
-import { Redacted, Token } from 'oidc-primitive';
+import { Redacted, OpaqueToken } from 'oidc-primitive';
 
-const code = Token.generate();
+const code = OpaqueToken.generate();
 String(code); // '<redacted>'
 const raw: string = Redacted.value(code);
 ```
 
-Call `Redacted.value` only where the raw value must leave the process, for example in a `Set-Cookie` header. `Token.hash`, `Token.equals` and `Token.matchesHash` accept either a string or a `Redacted<string>`. `ClientSecret.parseBasic` returns the client secret as `Redacted<string>`. See [Redacted](/reference/redacted/).
+Call `Redacted.value` only where the raw value must leave the process, for example in a `Set-Cookie` header. `OpaqueToken.hash`, `OpaqueToken.equals` and `OpaqueToken.matchesHash` accept either a string or a `Redacted<string>`. `ClientSecret.parseBasic` returns the client secret as `Redacted<string>`. See [Redacted](/reference/redacted/).
 
 ## Errors are `OAuthError`
 
