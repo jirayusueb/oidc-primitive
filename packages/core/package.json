@@ -1,6 +1,6 @@
 {
 	"name": "oidc-primitive",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "OAuth 2.1 and OpenID Connect security primitives built on jose",
 	"homepage": "https://github.com/jirayusueb/oidc-primitive/tree/main/packages/core#readme",
 	"license": "MIT",
