@@ -7,7 +7,7 @@ At the token endpoint, after every check has passed, the library signs the token
 
 ## Keys
 
-`Keys.generate(alg, options)` returns a `{ publicKey, privateKey }` pair. The default algorithm is `ES256`. The private key is non-extractable unless you pass `{ extractable: true }`.
+`Keys.generate(alg, options)` returns a `{ publicKey, privateKey }` pair. The default algorithm is `RS256`, the ID token algorithm every OpenID Provider must support (OIDC Core s15.1). The private key is non-extractable unless you pass `{ extractable: true }`.
 
 `Keys.jwks` builds the document for your `jwks_uri` from public keys. `Keys.publicJwk` refuses to publish a JWK that contains a private member.
 

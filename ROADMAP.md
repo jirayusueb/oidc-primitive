@@ -75,14 +75,14 @@ The modules are written. Commit `e082417` passed 93 tests on Bun and Node, `tsc`
 
 These items remain before `1.0.0`:
 
-- [ ] Run `bun run conformance` and pass `oidcc-basic-certification-test-plan` and `oidcc-config-certification-test-plan`. The runner exists. No run has passed yet.
-- [ ] Extend `.github/workflows/ci.yml` with `bun run test:node` on Node LTS and with `bun run build` followed by `bun scripts/check-dts.ts`.
-- [ ] Add `.github/workflows/conformance.yml` (Ubuntu only).
-- [ ] Write `packages/core/README.md` and replace the template text in the root `README.md`.
-- [ ] Reserve the `oidc-primitive` name on npm.
-- [ ] Decide the default algorithm of `Keys.generate`. The current draft uses `ES256`.
-- [ ] Add cross-tenant isolation tests. A token or assertion made for tenant A must fail at tenant B's `AccessTokenVerifier`, `IdToken.verify`, and `ClientAssertion.verify`.
-- [ ] Add a tenancy section to `docs/host-checklist.md` that covers tenant resolution before any check, storage keyed by issuer, keys per tenant, and per-tenant budgets for outbound fetches.
+- [x] Run `bun run conformance` and pass `oidcc-basic-certification-test-plan` and `oidcc-config-certification-test-plan`. Suite v5.3.4 on 2026-11-25: 36 Basic and 2 Config modules, 1940 conditions, 0 failures, 0 warnings. Four Basic modules end in REVIEW and need their screenshots checked before formal certification.
+- [x] Extend `.github/workflows/ci.yml` with `bun run test:node` on Node LTS and with `bun run build` followed by `bun scripts/check-dts.ts`.
+- [x] Add `.github/workflows/conformance.yml` (Ubuntu only).
+- [x] Write `packages/core/README.md` and replace the template text in the root `README.md`.
+- [x] Reserve the `oidc-primitive` name on npm. `0.1.0` is published.
+- [x] Decide the default algorithm of `Keys.generate`. It is `RS256`, the ID token algorithm every OpenID Provider must support (OIDC Core s15.1), and the algorithm `ServerMetadata` advertises by default.
+- [x] Add cross-tenant isolation tests. A token or assertion made for tenant A must fail at tenant B's `AccessTokenVerifier`, `IdToken.verify`, and `ClientAssertion.verify`. See `packages/core/test/tenant-isolation.test.ts`.
+- [x] Add a tenancy section to `docs/host-checklist.md` that covers tenant resolution before any check, storage keyed by issuer, keys per tenant, and per-tenant budgets for outbound fetches.
 - [ ] Publish `0.x` releases until the conformance plans pass, then `1.0.0`.
 
 ## v1.1: MCP authorization servers and more OIDC profiles

@@ -59,7 +59,7 @@ const generate: (
 
 | Parameter | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `alg` | `string` | `'ES256'` | JOSE algorithm of the new key pair. |
+| `alg` | `string` | `'RS256'` | JOSE algorithm of the new key pair. |
 | `options.extractable` | `boolean` | `false` | Whether the private key can be exported. |
 
 ```ts

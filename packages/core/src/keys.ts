@@ -42,9 +42,9 @@ export interface Entry {
 
 const privateMembers = ['d', 'p', 'q', 'dp', 'dq', 'qi', 'k', 'oth'] as const;
 
-/** Generate a signing key pair. The private key is non-extractable unless asked otherwise. */
+/** Generate a signing key pair. The default RS256 is the ID token alg every OP must support (OIDC Core s15.1). The private key is non-extractable unless asked otherwise. */
 export const generate = (
-	alg = 'ES256',
+	alg = 'RS256',
 	{ extractable = false }: { readonly extractable?: boolean } = {},
 ): Promise<KeyPair> => generateKeyPair(alg, { extractable });
 
