@@ -8,7 +8,8 @@ export type Scope<Name extends string = string> = Name & { readonly [brand]: 'Sc
 /** RFC 6749 s3.3: scope-token = 1*( %x21 / %x23-5B / %x5D-7E ). */
 const token = /^[\x21\x23-\x5B\x5D-\x7E]+$/;
 
-export const isScope = (value: unknown): value is Scope => typeof value === 'string' && token.test(value);
+export const isScope = (value: unknown): value is Scope =>
+	typeof value === 'string' && token.test(value);
 
 /** Declare a scope, keeping its literal name in the type. */
 export const make = <const Name extends string>(name: Name): Scope<Name> => {
@@ -43,7 +44,10 @@ export const satisfies = (granted: Iterable<string>, requirement: Requirement): 
 };
 
 /** The scopes from `granted` that appear in `declared`, typed by the declaration. */
-export const filter = <const S extends string>(granted: Iterable<string>, declared: ReadonlyArray<S>): S[] => {
+export const filter = <const S extends string>(
+	granted: Iterable<string>,
+	declared: ReadonlyArray<S>,
+): S[] => {
 	const set = new Set(granted);
 	return declared.filter((s) => set.has(s));
 };

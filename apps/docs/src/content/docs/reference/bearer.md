@@ -3,7 +3,7 @@ title: Bearer
 description: Extract a bearer token from the Authorization header and build a WWW-Authenticate Bearer challenge.
 ---
 
-`Bearer` implements the two parts of [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750) a resource server needs. `extract` reads the credential from the `Authorization` header only. `challenge` formats the `WWW-Authenticate` value.
+`Bearer` implements the two parts of [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750) a resource server needs. `parse` reads the credential from the `Authorization` header only. `challenge` formats the `WWW-Authenticate` value.
 
 ## Import
 
@@ -11,10 +11,10 @@ description: Extract a bearer token from the Authorization header and build a WW
 import { Bearer } from 'oidc-primitive';
 ```
 
-## extract
+## parse
 
 ```ts title="signature"
-const extract: (headers: Headers) => string | undefined;
+const parse: (headers: Headers) => string | undefined;
 ```
 
 Reads the `Authorization` header. The query string and body are never read ([RFC 6750 section 2.1](https://www.rfc-editor.org/rfc/rfc6750#section-2.1)). The scheme match is case-insensitive.
@@ -26,7 +26,7 @@ Reads the `Authorization` header. The query string and body are never read ([RFC
 | throws `OAuthError.InvalidToken` | The scheme is `Bearer` but the token is not a valid `b64token` (`malformed bearer credential`). |
 
 ```ts
-const token = Bearer.extract(request.headers);
+const token = Bearer.parse(request.headers);
 ```
 
 ## ChallengeOptions

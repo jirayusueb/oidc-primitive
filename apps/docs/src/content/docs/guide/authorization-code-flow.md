@@ -11,17 +11,17 @@ The client sends the browser to `/authorize` with `client_id`, `redirect_uri`, `
 
 - Reject before any redirect when `client_id` is unknown or `redirect_uri` fails `RedirectUri.matches`. Render an error page; never redirect to an unverified URI ([RFC 9700 s4.11.2](https://www.rfc-editor.org/rfc/rfc9700#section-4.11.2)).
 - `Pkce.validateMethod` rejects anything but `S256`.
-- `Scope.parse` and `Resource.audience` resolve what the code will be worth.
+- `Scope.parse` and `Resource.resolveAudience` resolve what the code will be worth.
 
 ## 2. Issue the code
 
-Generate with `Token.generate()` and store only `await Token.hash(code)` with a TTL of 60 seconds or less. Redirect back with `OAuthResponse.redirect`, which adds `iss` ([RFC 9207](https://www.rfc-editor.org/rfc/rfc9207)).
+Generate with `OpaqueToken.generate()` and store only `await OpaqueToken.hash(code)` with a TTL of 60 seconds or less. Redirect back with `OAuthResponse.redirect`, which adds `iss` ([RFC 9207](https://www.rfc-editor.org/rfc/rfc9207)).
 
 ## 3. Token request
 
 The client posts `grant_type=authorization_code`, `code`, `code_verifier`, and `redirect_uri` to `/token`.
 
-- Authenticate the client: `ClientSecret.parseBasic` plus `Token.matchesHash`, or `ClientAssertion.verify` for `private_key_jwt`. See [Client authentication](/guide/client-authentication/).
+- Authenticate the client: `ClientSecret.parseBasic` plus `OpaqueToken.matchesHash`, or `ClientAssertion.verify` for `private_key_jwt`. See [Client authentication](/guide/client-authentication/).
 - Consume the code atomically (`DELETE ... RETURNING`, `GETDEL`). Only after the delete succeeded, check the client, the `redirect_uri`, and `Pkce.verify`.
 - A replayed, spent code must revoke every token issued from it ([OAuth 2.1 draft s7.5.3](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-17#section-7.5.3)). Keep a short tombstone of consumed hashes.
 

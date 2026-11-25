@@ -7,7 +7,10 @@ describe('RFC 6749 s5.2 and s4.1.2.1 error responses', () => {
 		const res = new OAuthError.InvalidGrant('code expired').toResponse();
 		assert.equal(res.status, 400);
 		assert.equal(res.headers.get('cache-control'), 'no-store');
-		assert.deepEqual(await res.json(), { error: 'invalid_grant', error_description: 'code expired' });
+		assert.deepEqual(await res.json(), {
+			error: 'invalid_grant',
+			error_description: 'code expired',
+		});
 	});
 
 	it('answers invalid_client with 401, and a Basic challenge only for the Basic scheme', () => {
@@ -26,7 +29,10 @@ describe('RFC 6749 s5.2 and s4.1.2.1 error responses', () => {
 		);
 		const res = new OAuthError.InsufficientScope('read write').toResponse();
 		assert.equal(res.status, 403);
-		assert.equal(res.headers.get('www-authenticate'), 'Bearer error="insufficient_scope", scope="read write"');
+		assert.equal(
+			res.headers.get('www-authenticate'),
+			'Bearer error="insufficient_scope", scope="read write"',
+		);
 	});
 
 	it('redirects with error, state and iss (RFC 9207 s2)', () => {
@@ -57,7 +63,10 @@ describe('RFC 6750 s3.1 MissingToken', () => {
 		assert.equal(res.status, 401);
 		assert.equal(res.headers.get('www-authenticate'), 'Bearer');
 		assert.equal('error' in error.toJSON(), false);
-		assert.throws(() => error.toRedirect('https://app.example/cb', { issuer: 'https://as.example' }), TypeError);
+		assert.throws(
+			() => error.toRedirect('https://app.example/cb', { issuer: 'https://as.example' }),
+			TypeError,
+		);
 	});
 
 	it('is not an InvalidToken', () => {
@@ -68,11 +77,27 @@ describe('RFC 6750 s3.1 MissingToken', () => {
 
 describe('RFC 6749 s5.2 and RFC 6750 s3.1 OAuthError.fromCode', () => {
 	const codes = [
-		'invalid_redirect_uri', 'invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client',
-		'unsupported_grant_type', 'unsupported_response_type', 'invalid_scope', 'invalid_target', 'access_denied',
-		'login_required', 'consent_required', 'interaction_required', 'account_selection_required',
-		'request_not_supported', 'request_uri_not_supported', 'registration_not_supported', 'invalid_token',
-		'insufficient_scope', 'server_error', 'temporarily_unavailable',
+		'invalid_redirect_uri',
+		'invalid_request',
+		'invalid_client',
+		'invalid_grant',
+		'unauthorized_client',
+		'unsupported_grant_type',
+		'unsupported_response_type',
+		'invalid_scope',
+		'invalid_target',
+		'access_denied',
+		'login_required',
+		'consent_required',
+		'interaction_required',
+		'account_selection_required',
+		'request_not_supported',
+		'request_uri_not_supported',
+		'registration_not_supported',
+		'invalid_token',
+		'insufficient_scope',
+		'server_error',
+		'temporarily_unavailable',
 	] as const;
 
 	it('returns the subclass for every registered code', () => {
@@ -111,14 +136,18 @@ describe('RFC 6750 s3 challenge safety', () => {
 	});
 });
 
-describe('design G5 errors carry no secret input', () => {
+describe('RFC 6749 s10.3 and s10.10 errors carry no secret input (design G5)', () => {
 	it('never echoes the credential a primitive rejected', async () => {
 		const secret = 's3cr3tTokenValue0123456789abcdefghijklmnopq';
 		const issuer = 'https://op.example';
 		const { publicKey } = await Keys.generate('ES256');
 		const rejected: unknown[] = await Promise.all([
-			AccessToken.verify(secret, { issuer, audience: 'https://rs', keys: publicKey }).catch((e: unknown) => e),
-			ClientAssertion.verify(secret, { issuer, clientId: 'c', keys: publicKey }).catch((e: unknown) => e),
+			AccessToken.verify(secret, { issuer, audience: 'https://rs', keys: publicKey }).catch(
+				(e: unknown) => e,
+			),
+			ClientAssertion.verify(secret, { issuer, clientId: 'c', keys: publicKey }).catch(
+				(e: unknown) => e,
+			),
 			IdToken.verify(secret, { issuer, audience: 'c', keys: publicKey }).catch((e: unknown) => e),
 			Pkce.verify(secret, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM').catch((e: unknown) => e),
 		]);

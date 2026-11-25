@@ -21,7 +21,11 @@ describe('RFC 6749 s5.1 responses', () => {
 	});
 
 	it('redirect is 303 with params and iss (RFC 9207)', () => {
-		const res = OAuthResponse.redirect('https://app.example/cb', { code: Redacted.make('c1'), state: 's' }, { issuer: 'https://as.example' });
+		const res = OAuthResponse.redirect(
+			'https://app.example/cb',
+			{ code: Redacted.make('c1'), state: 's' },
+			{ issuer: 'https://as.example' },
+		);
 		assert.equal(res.status, 303);
 		const url = new URL(res.headers.get('Location') ?? '');
 		assert.equal(url.searchParams.get('code'), 'c1');

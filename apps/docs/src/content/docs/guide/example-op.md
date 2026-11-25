@@ -58,14 +58,14 @@ Revoking an access or refresh token revokes its whole grant. Expired rows are ne
 
 | Endpoint | Modules |
 | --- | --- |
-| Startup | [Keys](/reference/keys/), [TokenSigner](/reference/token-signer/), [AccessTokenVerifier](/reference/access-token-verifier/), [Metadata](/reference/metadata/), [RedirectUri](/reference/redirect-uri/), [Token](/reference/token/) |
-| `/.well-known/openid-configuration`, `/jwks` | [Metadata](/reference/metadata/), [Keys](/reference/keys/), [OAuthResponse](/reference/oauth-response/) |
-| `/authorize` | [RedirectUri](/reference/redirect-uri/), [Scope](/reference/scope/), [Pkce](/reference/pkce/), [Resource](/reference/resource/), [Claims](/reference/claims/), [IdToken](/reference/id-token/), [Token](/reference/token/), [OAuthResponse](/reference/oauth-response/), [OAuthError](/reference/oauth-error/) |
-| `/login` | [Token](/reference/token/), [Redacted](/reference/redacted/) |
-| `/token` | [ClientSecret](/reference/client-secret/), [Token](/reference/token/), [Pkce](/reference/pkce/), [Scope](/reference/scope/), [Resource](/reference/resource/), [TokenSigner](/reference/token-signer/), [Claims](/reference/claims/), [OAuthResponse](/reference/oauth-response/) |
-| `/userinfo` | [Bearer](/reference/bearer/), [AccessTokenVerifier](/reference/access-token-verifier/), [Claims](/reference/claims/), [OAuthResponse](/reference/oauth-response/) |
+| Startup | [Keys](/reference/keys/), [TokenSigner](/reference/token-signer/), [AccessTokenVerifier](/reference/access-token-verifier/), [ServerMetadata](/reference/server-metadata/), [RedirectUri](/reference/redirect-uri/), [OpaqueToken](/reference/opaque-token/) |
+| `/.well-known/openid-configuration`, `/jwks` | [ServerMetadata](/reference/server-metadata/), [Keys](/reference/keys/), [OAuthResponse](/reference/oauth-response/) |
+| `/authorize` | [RedirectUri](/reference/redirect-uri/), [Scope](/reference/scope/), [Pkce](/reference/pkce/), [Resource](/reference/resource/), [UserClaims](/reference/user-claims/), [IdToken](/reference/id-token/), [OpaqueToken](/reference/opaque-token/), [OAuthResponse](/reference/oauth-response/), [OAuthError](/reference/oauth-error/) |
+| `/login` | [OpaqueToken](/reference/opaque-token/), [Redacted](/reference/redacted/) |
+| `/token` | [ClientSecret](/reference/client-secret/), [OpaqueToken](/reference/opaque-token/), [Pkce](/reference/pkce/), [Scope](/reference/scope/), [Resource](/reference/resource/), [TokenSigner](/reference/token-signer/), [UserClaims](/reference/user-claims/), [OAuthResponse](/reference/oauth-response/) |
+| `/userinfo` | [Bearer](/reference/bearer/), [AccessTokenVerifier](/reference/access-token-verifier/), [UserClaims](/reference/user-claims/), [OAuthResponse](/reference/oauth-response/) |
 | `/introspect` | [ClientSecret](/reference/client-secret/), [AccessTokenVerifier](/reference/access-token-verifier/), [Introspection](/reference/introspection/) |
-| `/revoke` | [ClientSecret](/reference/client-secret/), [Token](/reference/token/) |
+| `/revoke` | [ClientSecret](/reference/client-secret/), [OpaqueToken](/reference/opaque-token/) |
 
 ## Walkthrough
 
@@ -88,12 +88,12 @@ const verifier = AccessTokenVerifier.make({ issuer, audience: issuer, keys: publ
 Client secrets are hashed when the clients are loaded, and redirect URIs are validated:
 
 ```ts
-import { RedirectUri, Token } from 'oidc-primitive';
+import { RedirectUri, OpaqueToken } from 'oidc-primitive';
 
 declare const c: { client_secret?: string; redirect_uris: string[] };
 
 for (const uri of c.redirect_uris) RedirectUri.validate(uri);
-const secretHash = c.client_secret ? await Token.hash(c.client_secret) : undefined;
+const secretHash = c.client_secret ? await OpaqueToken.hash(c.client_secret) : undefined;
 ```
 
 ### /authorize
@@ -124,7 +124,7 @@ try {
 `authorizeChecked` rejects `request`, `request_uri` and `registration` with `RequestNotSupported`, `RequestUriNotSupported` and `RegistrationNotSupported`, and anything but `response_type=code` with `UnsupportedResponseType`. Then it checks scope, PKCE, resource and claims:
 
 ```ts
-import { Claims, OAuthError, Pkce, Resource, Scope } from 'oidc-primitive';
+import { UserClaims, OAuthError, Pkce, Resource, Scope } from 'oidc-primitive';
 
 declare const p: URLSearchParams;
 declare const issuer: string;
@@ -139,8 +139,8 @@ if (challenge !== undefined) {
 } else if (!exempt) {
 	throw new OAuthError.InvalidRequest('PKCE with code_challenge_method=S256 is required');
 }
-const audience = Resource.audience(p.getAll('resource'), issuer);
-const claims = Claims.parseRequest(p.get('claims'));
+const audience = Resource.resolveAudience(p.getAll('resource'), issuer);
+const claims = UserClaims.parseRequest(p.get('claims'));
 ```
 
 `exempt` is the example's PKCE policy: only a confidential client registered as `oidc-nonce` that sent a `nonce` may skip PKCE. This is host policy, not a library rule.
@@ -148,7 +148,7 @@ const claims = Claims.parseRequest(p.get('claims'));
 After login, the example generates the code, stores its hash for 60 seconds and redirects with `iss`:
 
 ```ts
-import { OAuthResponse, Token } from 'oidc-primitive';
+import { OAuthResponse, OpaqueToken } from 'oidc-primitive';
 
 declare const db: { query: (sql: string) => { run: (...args: unknown[]) => unknown } };
 declare const issuer: string;
@@ -156,9 +156,9 @@ declare const redirectUri: string;
 declare const state: string | undefined;
 declare const grantJson: string;
 
-const code = Token.generate();
+const code = OpaqueToken.generate();
 db.query('INSERT INTO codes(hash, data, exp) VALUES (?, ?, ?)').run(
-	await Token.hash(code),
+	await OpaqueToken.hash(code),
 	grantJson,
 	Math.floor(Date.now() / 1000) + 60,
 );
@@ -170,7 +170,7 @@ OAuthResponse.redirect(redirectUri, { code, state }, { issuer });
 Client authentication accepts Basic, a form secret, or none. It requires the method registered for the client:
 
 ```ts
-import { ClientSecret, OAuthError, Redacted, Token } from 'oidc-primitive';
+import { ClientSecret, OAuthError, Redacted, OpaqueToken } from 'oidc-primitive';
 
 declare const req: Request;
 declare const f: URLSearchParams;
@@ -181,7 +181,7 @@ const secret = basic ? Redacted.value(basic.clientSecret) : f.get('client_secret
 const method = basic ? 'client_secret_basic' : secret !== null ? 'client_secret_post' : 'none';
 const client = clients.get(basic?.clientId ?? f.get('client_id') ?? '');
 if (!client || client.method !== method) throw new OAuthError.InvalidClient('client authentication failed');
-if (method !== 'none' && !(await Token.matchesHash(secret!, client.secretHash!))) {
+if (method !== 'none' && !(await OpaqueToken.matchesHash(secret!, client.secretHash!))) {
 	throw new OAuthError.InvalidClient('client authentication failed');
 }
 ```
@@ -189,13 +189,13 @@ if (method !== 'none' && !(await Token.matchesHash(secret!, client.secretHash!))
 For `authorization_code`, the code is consumed with one `DELETE ... RETURNING`. A replayed code revokes the grant behind it. Then `redirect_uri` is compared and `Pkce.verify` runs:
 
 ```ts
-import { OAuthError, Pkce, Token } from 'oidc-primitive';
+import { OAuthError, Pkce, OpaqueToken } from 'oidc-primitive';
 
 declare const f: URLSearchParams;
 declare const db: { query: (sql: string) => { get: (...args: unknown[]) => unknown } };
 declare const g: { redirect_uri: string; challenge?: string; pkce_required: boolean };
 
-const h = await Token.hash(f.get('code')!);
+const h = await OpaqueToken.hash(f.get('code')!);
 const row = db.query('DELETE FROM codes WHERE hash = ? RETURNING data, exp').get(h);
 if (f.get('redirect_uri') !== g.redirect_uri) throw new OAuthError.InvalidGrant('redirect_uri does not match');
 await Pkce.verify(f.get('code_verifier'), g.challenge, { required: g.pkce_required });
@@ -204,23 +204,23 @@ await Pkce.verify(f.get('code_verifier'), g.challenge, { required: g.pkce_requir
 Tokens are signed with the signer. The `at_hash` is bound with `accessToken`, and `nonce` is echoed only on the first response:
 
 ```ts
-import { Claims, OAuthResponse, Scope, type TokenSigner } from 'oidc-primitive';
+import { UserClaims, OAuthResponse, Scope, type TokenSigner } from 'oidc-primitive';
 
 declare const signer: TokenSigner.TokenSigner;
-declare const g: { sub: string; audience: string; client_id: string; grant_id: string; nonce?: string; claims: Claims.Request };
+declare const g: { sub: string; audience: string; client_id: string; grant_id: string; nonce?: string; claims: UserClaims.Request };
 declare const scope: string[];
 declare const user: Record<string, unknown>;
 
-const access = await signer.accessToken({
+const access = await signer.signAccessToken({
 	sub: g.sub,
 	aud: g.audience,
 	client_id: g.client_id,
 	scope: Scope.format(scope),
 	gid: g.grant_id,
 });
-const idToken = await signer.idToken(
+const idToken = await signer.signIdToken(
 	{
-		...Claims.select(user, { scopes: [], request: g.claims, target: 'id_token' }),
+		...UserClaims.select(user, { scopes: [], request: g.claims, target: 'id_token' }),
 		sub: g.sub,
 		aud: g.client_id,
 		nonce: g.nonce,
@@ -235,18 +235,18 @@ Refresh tokens rotate with `UPDATE refresh SET used = 1 WHERE hash = ? AND used 
 ### /userinfo
 
 ```ts
-import { AccessTokenVerifier, Bearer, Claims, OAuthError, OAuthResponse } from 'oidc-primitive';
+import { AccessTokenVerifier, Bearer, UserClaims, OAuthError, OAuthResponse } from 'oidc-primitive';
 
 declare const req: Request;
 declare const verifier: AccessTokenVerifier.AccessTokenVerifier;
 declare const user: Record<string, unknown>;
-declare const requestedClaims: Claims.Request;
+declare const requestedClaims: UserClaims.Request;
 
-const bearer = Bearer.extract(req.headers);
+const bearer = Bearer.parse(req.headers);
 if (bearer === undefined) throw new OAuthError.InvalidToken();
 const v = await verifier.verify(bearer);
 if (!v.scope.includes('openid')) throw new OAuthError.InsufficientScope('openid');
-OAuthResponse.json(Claims.select(user, { scopes: v.scope, request: requestedClaims, target: 'userinfo' }));
+OAuthResponse.json(UserClaims.select(user, { scopes: v.scope, request: requestedClaims, target: 'userinfo' }));
 ```
 
 ### /introspect and /revoke

@@ -1,20 +1,32 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { SignJWT } from 'jose';
-import { AccessTokenVerifier, ClientAssertion, IdToken, Keys, OAuthError, TokenSigner } from '../src/index.ts';
+import {
+	AccessTokenVerifier,
+	ClientAssertion,
+	IdToken,
+	Keys,
+	OAuthError,
+	TokenSigner,
+} from '../src/index.ts';
 
 // Path issuers on one host: the case where only the issuer string separates tenants.
 const tenant = async (issuer: string) => {
 	const { publicKey, privateKey } = await Keys.generate('ES256');
-	return { issuer, publicKey, signer: TokenSigner.make({ issuer, key: privateKey, kid: 'k1', alg: 'ES256' }) };
+	return {
+		issuer,
+		publicKey,
+		signer: TokenSigner.make({ issuer, key: privateKey, kid: 'k1', alg: 'ES256' }),
+	};
 };
 const a = await tenant('https://as.example/tenant/a');
 const b = await tenant('https://as.example/tenant/b');
 const audience = 'https://rs.example';
 const clientId = 'shared-client';
 
-describe('a tenant A credential fails at tenant B', () => {
-	const accessToken = () => a.signer.signAccessToken({ sub: 'u', aud: audience, client_id: clientId, scope: 'read' });
+describe('RFC 9068 s4 and RFC 7523 s3 issuer binding: a tenant A credential fails at tenant B', () => {
+	const accessToken = () =>
+		a.signer.signAccessToken({ sub: 'u', aud: audience, client_id: clientId, scope: 'read' });
 	const atB = (keys: CryptoKey) => AccessTokenVerifier.make({ issuer: b.issuer, audience, keys });
 
 	it('access token at AccessTokenVerifier', async () => {

@@ -10,7 +10,10 @@ const forbiddenSchemes = ['javascript:', 'data:', 'vbscript:', 'file:', 'blob:']
  * No fragment (RFC 6749 s3.1.2). `http` only on `127.0.0.1` or `[::1]`, never `localhost`
  * (RFC 8252 s8.3, RFC 9700 s2.6). Private-use schemes only for native clients (RFC 8252 s7.1).
  */
-export const validate = (uri: string, options: { readonly applicationType?: ApplicationType } = {}): void => {
+export const validate = (
+	uri: string,
+	options: { readonly applicationType?: ApplicationType } = {},
+): void => {
 	if (!URL.canParse(uri)) throw new InvalidRedirectUri('redirect_uri is not an absolute URI');
 	const url = new URL(uri);
 	const type = options.applicationType ?? 'web';
@@ -24,7 +27,8 @@ export const validate = (uri: string, options: { readonly applicationType?: Appl
 	throw new InvalidRedirectUri('redirect_uri scheme is not allowed');
 };
 
-const isLoopback = (url: URL): boolean => url.protocol === 'http:' && loopbackHosts.includes(url.hostname);
+const isLoopback = (url: URL): boolean =>
+	url.protocol === 'http:' && loopbackHosts.includes(url.hostname);
 
 /**
  * Exact string comparison against registered URIs (RFC 9700 s4.1.3). The only
@@ -45,7 +49,7 @@ export const find = (requested: string, registered: ReadonlyArray<string>): stri
 		portless.port = '';
 		return reg.href === portless.href;
 	});
-}
+};
 
 /** True when `requested` matches a registered URI under `find`. */
 export const matches = (requested: string, registered: ReadonlyArray<string>): boolean =>

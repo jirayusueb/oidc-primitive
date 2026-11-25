@@ -8,7 +8,10 @@ describe('RFC 7517 s5 JWK Set publishing', () => {
 		const { publicKey } = await Keys.generate('ES256');
 		const { keys } = await Keys.jwks([{ key: publicKey, kid: 'k1', alg: 'ES256' }]);
 		assert.equal(keys.length, 1);
-		assert.deepEqual([keys[0]?.kid, keys[0]?.alg, keys[0]?.use, keys[0]?.kty], ['k1', 'ES256', 'sig', 'EC']);
+		assert.deepEqual(
+			[keys[0]?.kid, keys[0]?.alg, keys[0]?.use, keys[0]?.kty],
+			['k1', 'ES256', 'sig', 'EC'],
+		);
 		assert.equal('d' in (keys[0] ?? {}), false);
 	});
 
@@ -23,7 +26,10 @@ describe('RFC 7517 s5 JWK Set publishing', () => {
 		await assert.rejects(Keys.jwks([{ key: privateKey, kid: 'k', alg: 'ES256' }]), TypeError);
 		const jwk = await exportJWK(privateKey);
 		await assert.rejects(Keys.publicJwk(jwk, { kid: 'k', alg: 'ES256' }), TypeError);
-		await assert.rejects(Keys.publicJwk({ kty: 'oct', k: 'AAAA' }, { kid: 'k', alg: 'HS256' }), TypeError);
+		await assert.rejects(
+			Keys.publicJwk({ kty: 'oct', k: 'AAAA' }, { kid: 'k', alg: 'HS256' }),
+			TypeError,
+		);
 	});
 });
 
@@ -40,7 +46,10 @@ describe('RFC 7517 s5 local JWK Set resolver', () => {
 		const a = await Keys.generate('ES256');
 		const b = await Keys.generate('ES256');
 		const keys = Keys.localResolver({
-			keys: [await Keys.publicJwk(a.publicKey, { kid: 'a', alg: 'ES256' }), await Keys.publicJwk(b.publicKey, { kid: 'b', alg: 'ES256' })],
+			keys: [
+				await Keys.publicJwk(a.publicKey, { kid: 'a', alg: 'ES256' }),
+				await Keys.publicJwk(b.publicKey, { kid: 'b', alg: 'ES256' }),
+			],
 		});
 		const options = { issuer: 'https://op.example', audience: 'https://rs.example', keys };
 		const claims = { sub: 'u', aud: options.audience, client_id: 'c' };

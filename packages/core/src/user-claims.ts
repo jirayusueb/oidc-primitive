@@ -10,8 +10,20 @@ export interface Request {
 /** OIDC Core s5.4. */
 const byScope: Readonly<Record<string, readonly string[]>> = {
 	profile: [
-		'name', 'family_name', 'given_name', 'middle_name', 'nickname', 'preferred_username', 'profile',
-		'picture', 'website', 'gender', 'birthdate', 'zoneinfo', 'locale', 'updated_at',
+		'name',
+		'family_name',
+		'given_name',
+		'middle_name',
+		'nickname',
+		'preferred_username',
+		'profile',
+		'picture',
+		'website',
+		'gender',
+		'birthdate',
+		'zoneinfo',
+		'locale',
+		'updated_at',
 	],
 	email: ['email', 'email_verified'],
 	address: ['address'],
@@ -71,6 +83,7 @@ export const select = (
 	for (const name of Object.keys(options.request?.[options.target] ?? {})) allowed.add(name);
 	allowed.add('sub');
 	const out: Record<string, unknown> = {};
-	for (const name of allowed) if (Object.hasOwn(claims, name) && claims[name] !== undefined) out[name] = claims[name];
+	for (const name of allowed)
+		if (Object.hasOwn(claims, name) && claims[name] !== undefined) out[name] = claims[name];
 	return out;
 };

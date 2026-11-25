@@ -28,7 +28,7 @@ The authorization code flow passes through five steps. At each one, your route c
 		src={flow}
 		widths={[768, 1536]}
 		sizes="(min-width: 72rem) 70rem, 100vw"
-		alt="Authorization code flow in five steps. 1 Authorize: RedirectUri.matches, Pkce.validateMethod. 2 Issue code: Token.generate, Token.hash. 3 Token request: ClientSecret.parseBasic, Pkce.verify. 4 Sign tokens: IdToken.sign, AccessToken.sign. 5 Call API: AccessTokenVerifier. Underneath all steps: your app owns routes, storage, sessions, and UI."
+		alt="Authorization code flow in five steps. 1 Authorize: RedirectUri.matches, Pkce.validateMethod. 2 Issue code: OpaqueToken.generate, OpaqueToken.hash. 3 Token request: ClientSecret.parseBasic, Pkce.verify. 4 Sign tokens: IdToken.sign, AccessToken.sign. 5 Call API: AccessTokenVerifier. Underneath all steps: your app owns routes, storage, sessions, and UI."
 	/>
 </figure>
 
@@ -43,13 +43,13 @@ The [library and host](/guide/library-and-host/#one-flow-two-owners) guide shows
 A token endpoint is your route, your storage, and a handful of calls. Each call enforces one rule and throws an `OAuthError` that already knows its HTTP response.
 
 ```ts title="token.ts"
-import { OAuthError, OAuthResponse, Pkce, Token } from 'oidc-primitive';
+import { OAuthError, OAuthResponse, Pkce, OpaqueToken } from 'oidc-primitive';
 
 export const token = async (form: URLSearchParams): Promise<Response> => {
 	try {
 		const code = form.get('code');
 		if (!code) throw new OAuthError.InvalidRequest('code is required');
-		const record = await consumeCode(await Token.hash(code)); // your storage, atomic
+		const record = await consumeCode(await OpaqueToken.hash(code)); // your storage, atomic
 		if (!record) throw new OAuthError.InvalidGrant('code is invalid');
 		await Pkce.verify(form.get('code_verifier'), record.challenge);
 		return OAuthResponse.json({ access_token: await issueAccessToken(), token_type: 'Bearer', expires_in: 600 });
@@ -61,7 +61,7 @@ export const token = async (form: URLSearchParams): Promise<Response> => {
 ```
 
 <ul class="op-specmap not-content">
-	<li><code>Token.hash</code><a href="https://www.rfc-editor.org/rfc/rfc6749#section-10.10">RFC 6749 s10.10, store hashes, never codes</a></li>
+	<li><code>OpaqueToken.hash</code><a href="https://www.rfc-editor.org/rfc/rfc6749#section-10.10">RFC 6749 s10.10, store hashes, never codes</a></li>
 	<li><code>Pkce.verify</code><a href="https://www.rfc-editor.org/rfc/rfc7636#section-4.6">RFC 7636 s4.6, S256 only, downgrade refused (RFC 9700 s4.8.2)</a></li>
 	<li><code>OAuthResponse.json</code><a href="https://www.rfc-editor.org/rfc/rfc6749#section-5.1">RFC 6749 s5.1, <code>Cache-Control: no-store</code></a></li>
 	<li><code>err.toResponse()</code><a href="https://www.rfc-editor.org/rfc/rfc6749#section-5.2">RFC 6749 s5.2, error code and status</a></li>
@@ -89,17 +89,17 @@ The library answers security questions. It never decides who your users are, whe
 		<tr>
 			<th scope="row">Authorization request</th>
 			<td><b>You</b>Client lookup, login and consent pages, the error page for a bad redirect URI.</td>
-			<td class="lib"><b>oidc-primitive</b><code>RedirectUri.matches</code> exact match, <code>Pkce.validateMethod</code> S256 only, <code>Scope.parse</code>, <code>Resource.audience</code>.</td>
+			<td class="lib"><b>oidc-primitive</b><code>RedirectUri.matches</code> exact match, <code>Pkce.validateMethod</code> S256 only, <code>Scope.parse</code>, <code>Resource.resolveAudience</code>.</td>
 		</tr>
 		<tr>
 			<th scope="row">Authorization code</th>
 			<td><b>You</b>Store the hash with a TTL of 60 seconds or less. Consume it atomically.</td>
-			<td class="lib"><b>oidc-primitive</b><code>Token.generate</code>, <code>Token.hash</code>, <code>OAuthResponse.redirect</code> with <code>iss</code> (RFC 9207).</td>
+			<td class="lib"><b>oidc-primitive</b><code>OpaqueToken.generate</code>, <code>OpaqueToken.hash</code>, <code>OAuthResponse.redirect</code> with <code>iss</code> (RFC 9207).</td>
 		</tr>
 		<tr>
 			<th scope="row">Client authentication</th>
 			<td><b>You</b>Client records, the <code>jti</code> replay store, rate limits.</td>
-			<td class="lib"><b>oidc-primitive</b><code>ClientSecret.parseBasic</code>, <code>Token.matchesHash</code>, <code>ClientAssertion.verify</code>.</td>
+			<td class="lib"><b>oidc-primitive</b><code>ClientSecret.parseBasic</code>, <code>OpaqueToken.matchesHash</code>, <code>ClientAssertion.verify</code>.</td>
 		</tr>
 		<tr>
 			<th scope="row">Tokens and keys</th>
@@ -109,12 +109,12 @@ The library answers security questions. It never decides who your users are, whe
 		<tr>
 			<th scope="row">Discovery</th>
 			<td><b>You</b>Which endpoints and features you enable.</td>
-			<td class="lib"><b>oidc-primitive</b><code>Metadata.authorizationServer</code> with secure defaults, <code>Metadata.wellKnownUrls</code>.</td>
+			<td class="lib"><b>oidc-primitive</b><code>ServerMetadata.make</code> with secure defaults, <code>ServerMetadata.wellKnownUrls</code>.</td>
 		</tr>
 		<tr>
 			<th scope="row">Resource server</th>
 			<td><b>You</b>Which routes need which scopes.</td>
-			<td class="lib"><b>oidc-primitive</b><code>AccessTokenVerifier</code>, <code>Bearer.extract</code>, <code>Bearer.challenge</code>, <code>ResourceMetadata.make</code>.</td>
+			<td class="lib"><b>oidc-primitive</b><code>AccessTokenVerifier</code>, <code>Bearer.parse</code>, <code>Bearer.challenge</code>, <code>ResourceMetadata.make</code>.</td>
 		</tr>
 	</tbody>
 </table>

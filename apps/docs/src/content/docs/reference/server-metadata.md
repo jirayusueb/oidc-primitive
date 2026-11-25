@@ -1,14 +1,14 @@
 ---
-title: Metadata
+title: ServerMetadata
 description: Build the authorization server and OpenID Provider discovery document and its well-known URLs.
 ---
 
-`Metadata` builds one document that serves both [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414) authorization server metadata and [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html) metadata, in snake_case. The values that describe what the library supports are fixed. See [discovery and responses](/guide/discovery-and-responses/).
+`ServerMetadata` builds one document that serves both [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414) authorization server metadata and [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html) metadata, in snake_case. The values that describe what the library supports are fixed. See [discovery and responses](/guide/discovery-and-responses/).
 
 ## Import
 
 ```ts
-import { Metadata } from 'oidc-primitive';
+import { ServerMetadata } from 'oidc-primitive';
 ```
 
 ## Endpoints
@@ -17,7 +17,7 @@ import { Metadata } from 'oidc-primitive';
 interface Endpoints {
   readonly authorization: string;
   readonly token: string;
-  readonly jwks: string;
+  readonly jwksUri: string;
   readonly userinfo?: string;
   readonly introspection?: string;
   readonly revocation?: string;
@@ -26,7 +26,7 @@ interface Endpoints {
 }
 ```
 
-Absolute URLs. `authorization`, `token` and `jwks` are required.
+Absolute URLs. `authorization`, `token` and `jwksUri` are required.
 
 ## AuthorizationServerOptions
 
@@ -94,10 +94,10 @@ interface AuthorizationServerMetadata {
 
 The typed document. Absent optional members are omitted.
 
-## authorizationServer
+## make
 
 ```ts title="signature"
-const authorizationServer: (options: AuthorizationServerOptions) => AuthorizationServerMetadata;
+const make: (options: AuthorizationServerOptions) => AuthorizationServerMetadata;
 ```
 
 Returns the document. Members whose value is `undefined` are removed. These members are fixed:
@@ -122,12 +122,12 @@ Throws `TypeError` when:
 - `idTokenSigningAlgValuesSupported` lacks `RS256` and `allowWithoutRs256` is not `true`.
 
 ```ts
-const document = Metadata.authorizationServer({
+const document = ServerMetadata.make({
   issuer: 'https://op.example.com',
   endpoints: {
     authorization: 'https://op.example.com/authorize',
     token: 'https://op.example.com/token',
-    jwks: 'https://op.example.com/jwks',
+    jwksUri: 'https://op.example.com/jwks',
     userinfo: 'https://op.example.com/userinfo',
   },
   scopesSupported: ['openid', 'profile', 'email'],
@@ -150,10 +150,10 @@ Returns the two discovery URLs for `issuer`. A trailing slash on `issuer` is rem
 - `openidConfiguration` appends `/.well-known/openid-configuration` to the issuer ([OIDC Discovery section 4](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig)).
 - `oauthAuthorizationServer` inserts `/.well-known/oauth-authorization-server` between the host and the issuer path ([RFC 8414 section 3.1](https://www.rfc-editor.org/rfc/rfc8414#section-3.1)).
 
-Throws `TypeError` for the same issuer problems as `authorizationServer`.
+Throws `TypeError` for the same issuer problems as `make`.
 
 ```ts
-const urls = Metadata.wellKnownUrls('https://op.example.com/tenant1');
+const urls = ServerMetadata.wellKnownUrls('https://op.example.com/tenant1');
 // urls.openidConfiguration: https://op.example.com/tenant1/.well-known/openid-configuration
 // urls.oauthAuthorizationServer: https://op.example.com/.well-known/oauth-authorization-server/tenant1
 ```

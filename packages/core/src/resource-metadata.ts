@@ -37,7 +37,8 @@ const parseResource = (resource: string): URL => {
 /** RFC 9728 s2 protected resource metadata in snake_case. */
 export const make = (options: Options): ProtectedResourceMetadata => {
 	parseResource(options.resource);
-	if (options.authorizationServers.length === 0) throw new TypeError('authorizationServers must not be empty');
+	if (options.authorizationServers.length === 0)
+		throw new TypeError('authorizationServers must not be empty');
 	const doc = {
 		resource: options.resource,
 		authorization_servers: options.authorizationServers,

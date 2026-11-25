@@ -7,9 +7,9 @@ An API that accepts the provider's access tokens needs no storage and no client 
 
 ## Verify the token
 
-`AccessTokenVerifier.make` binds an issuer, an audience and a key source. `keys` is a public `CryptoKey`, a JWK, or a resolver. `Keys.remoteSet` builds a caching resolver over the provider's `jwks_uri`. jose refetches once on an unknown `kid`.
+`AccessTokenVerifier.make` binds an issuer, an audience and a key source. `keys` is a public `CryptoKey`, a JWK, or a resolver. `Keys.remoteResolver` builds a caching resolver over the provider's `jwks_uri`. jose refetches once on an unknown `kid`.
 
-`verifier.verifyRequest(headers)` reads the bearer token and verifies it per [RFC 9068 s4](https://www.rfc-editor.org/rfc/rfc9068#section-4).
+`verifier.verifyHeaders(headers)` reads the bearer token and verifies it per [RFC 9068 s4](https://www.rfc-editor.org/rfc/rfc9068#section-4).
 
 ```ts
 import { AccessTokenVerifier, Keys, OAuthError } from 'oidc-primitive';
@@ -18,13 +18,13 @@ const issuer = 'https://op.example';
 const verifier = AccessTokenVerifier.make({
 	issuer,
 	audience: 'https://api.example',
-	keys: Keys.remoteSet(`${issuer}/jwks`),
+	keys: Keys.remoteResolver(`${issuer}/jwks`),
 	scopes: ['orders:read', 'orders:write'],
 });
 
 export const handle = async (request: Request): Promise<Response> => {
 	try {
-		const { claims, granted } = await verifier.verifyRequest(request.headers);
+		const { claims, granted } = await verifier.verifyHeaders(request.headers);
 		if (!granted.includes('orders:read')) throw new OAuthError.InsufficientScope('orders:read');
 		return Response.json({ sub: claims.sub });
 	} catch (err) {
@@ -59,7 +59,7 @@ const allowed: boolean = Scope.satisfies(scope, { allOf: ['orders:read'], anyOf:
 
 ## Read the Bearer header
 
-`AccessTokenVerifier` already calls `Bearer.extract`. Use it directly when you verify elsewhere. It reads only the `Authorization` header, never the query or body ([RFC 6750 s2.1](https://www.rfc-editor.org/rfc/rfc6750#section-2.1)). It returns `undefined` when no Bearer credential is present and throws `InvalidToken` when one is malformed.
+`AccessTokenVerifier` already calls `Bearer.parse`. Use it directly when you verify elsewhere. It reads only the `Authorization` header, never the query or body ([RFC 6750 s2.1](https://www.rfc-editor.org/rfc/rfc6750#section-2.1)). It returns `undefined` when no Bearer credential is present and throws `InvalidToken` when one is malformed.
 
 `Bearer.challenge` builds a `WWW-Authenticate: Bearer` value:
 
@@ -68,7 +68,7 @@ import { Bearer } from 'oidc-primitive';
 
 declare const headers: Headers;
 
-const token: string | undefined = Bearer.extract(headers);
+const token: string | undefined = Bearer.parse(headers);
 const challenge: string = Bearer.challenge({
 	realm: 'api',
 	error: 'invalid_token',

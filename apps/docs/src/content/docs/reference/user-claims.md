@@ -1,14 +1,14 @@
 ---
-title: Claims
+title: UserClaims
 description: Map scopes to standard claims, parse the claims request parameter, and select the claims a response may carry.
 ---
 
-`Claims` covers [OpenID Connect Core section 5.4](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) (claims granted by scope) and [section 5.5](https://openid.net/specs/openid-connect-core-1_0.html#ClaimsParameter) (the `claims` request parameter). It decides which user attributes may leave the provider. Your host still loads the user and checks consent.
+`UserClaims` covers [OpenID Connect Core section 5.4](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) (claims granted by scope) and [section 5.5](https://openid.net/specs/openid-connect-core-1_0.html#ClaimsParameter) (the `claims` request parameter). It decides which user attributes may leave the provider. Your host still loads the user and checks consent.
 
 ## Import
 
 ```ts
-import { Claims } from 'oidc-primitive';
+import { UserClaims } from 'oidc-primitive';
 ```
 
 ## Target
@@ -27,10 +27,10 @@ type RequestMap = Readonly<Record<string, unknown>>;
 
 Claim names requested for one target. Each value is `null` or an object, as in OIDC Core section 5.5.
 
-## ClaimsRequest
+## Request
 
 ```ts title="signature"
-interface ClaimsRequest {
+interface Request {
   readonly userinfo?: RequestMap;
   readonly id_token?: RequestMap;
 }
@@ -54,13 +54,13 @@ Returns the standard claim names the scopes grant. Unknown scopes grant none. `o
 | `phone` | `phone_number`, `phone_number_verified` |
 
 ```ts
-const names = Claims.forScopes(['openid', 'email']);
+const names = UserClaims.forScopes(['openid', 'email']);
 ```
 
 ## parseRequest
 
 ```ts title="signature"
-const parseRequest: (json: string | null | undefined) => ClaimsRequest;
+const parseRequest: (json: string | null | undefined) => Request;
 ```
 
 Parses the `claims` request parameter. `null` or `undefined` returns `{}`. Only `userinfo` and `id_token` members are kept.
@@ -69,7 +69,7 @@ Throws `OAuthError.InvalidRequest` when the value is not valid JSON (`claims par
 
 ```ts
 const raw = new URL(request.url).searchParams.get('claims');
-const requested = Claims.parseRequest(raw);
+const requested = UserClaims.parseRequest(raw);
 ```
 
 ## SelectOptions
@@ -77,7 +77,7 @@ const requested = Claims.parseRequest(raw);
 ```ts title="signature"
 interface SelectOptions {
   readonly scopes: Iterable<string>;
-  readonly request?: ClaimsRequest;
+  readonly request?: Request;
   readonly target: Target;
 }
 ```
@@ -85,7 +85,7 @@ interface SelectOptions {
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `scopes` | `Iterable<string>` | none | Granted scopes. |
-| `request` | `ClaimsRequest` | none | The parsed `claims` parameter. |
+| `request` | `Request` | none | The parsed `claims` parameter. |
 | `target` | `Target` | none | Which member of `request` applies. |
 
 ## select
@@ -100,7 +100,7 @@ const select: (
 Returns only the entries of `claims` that a scope grants or that `request[target]` names. `sub` is always kept. Names with an `undefined` value are dropped.
 
 ```ts
-const body = Claims.select(
+const body = UserClaims.select(
   { sub: 'user-1', email: 'a@example.com', phone_number: '+1 555 0100' },
   { scopes: ['openid', 'email'], request: requested, target: 'userinfo' },
 );

@@ -17,15 +17,22 @@ const REDIRECT_URI = 'https://localhost.emobix.co.uk:8443/test/a/oidc-primitive/
 
 const here = import.meta.dir;
 $.cwd(here);
-const compose = (...args: string[]) => $`docker compose --file compose.yaml --profile runner ${args}`;
+const compose = (...args: string[]) =>
+	$`docker compose --file compose.yaml --profile runner ${args}`;
 
 const fetchRunner = async (): Promise<void> => {
 	await mkdir(`${here}/.cache/runner/certs-keys`, { recursive: true });
 	for (const [name, sum] of Object.entries(RUNNER_SCRIPTS)) {
 		const path = `${here}/.cache/runner/${name}`;
 		const file = Bun.file(path);
-		if ((await file.exists()) && new Bun.CryptoHasher('sha256').update(await file.bytes()).digest('hex') === sum) continue;
-		const res = await fetch(`https://gitlab.com/openid/conformance-suite/-/raw/${SUITE_COMMIT}/scripts/${name}`);
+		if (
+			(await file.exists()) &&
+			new Bun.CryptoHasher('sha256').update(await file.bytes()).digest('hex') === sum
+		)
+			continue;
+		const res = await fetch(
+			`https://gitlab.com/openid/conformance-suite/-/raw/${SUITE_COMMIT}/scripts/${name}`,
+		);
 		const bytes = new Uint8Array(await res.arrayBuffer());
 		if (!res.ok || new Bun.CryptoHasher('sha256').update(bytes).digest('hex') !== sum) {
 			throw new Error(`${name} does not match its pinned SHA-256`);
@@ -34,11 +41,21 @@ const fetchRunner = async (): Promise<void> => {
 	}
 };
 
-const secret = (): string => Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString('base64url');
+const secret = (): string =>
+	Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString('base64url');
 
 const waitForOp = async (): Promise<void> => {
 	for (let i = 0; i < 60; i++) {
-		const ok = await compose('exec', '-T', 'op-tls', 'wget', '-q', '-O', '/dev/null', 'http://op:3000/healthz')
+		const ok = await compose(
+			'exec',
+			'-T',
+			'op-tls',
+			'wget',
+			'-q',
+			'-O',
+			'/dev/null',
+			'http://op:3000/healthz',
+		)
 			.quiet()
 			.nothrow();
 		if (ok.exitCode === 0) return;
@@ -79,11 +96,25 @@ try {
 	await waitForOp();
 	const args = process.argv.slice(2);
 	const planArgs = args.length > 0 ? args : PLANS.flatMap((plan) => [plan, '.cache/oidcc.json']);
-	status = (await compose('run', '--rm', '--no-deps', 'runner', ...planArgs).nothrow()).exitCode;
+	status = (
+		await compose(
+			'run',
+			'--rm',
+			'--no-deps',
+			'runner',
+			'--expected-skips-file',
+			'expected-skips.json',
+			...planArgs,
+		).nothrow()
+	).exitCode;
 } finally {
-	const logs = (services: string[]) => compose('logs', '--no-color', ...services).quiet().nothrow();
+	const logs = (services: string[]) =>
+		compose('logs', '--no-color', ...services)
+			.quiet()
+			.nothrow();
 	await Bun.write(`${here}/results/op.log`, (await logs(['op', 'op-tls'])).text());
 	await Bun.write(`${here}/results/suite.log`, (await logs(['server', 'nginx'])).text());
-	if (process.env.KEEP !== '1') await compose('down', '--volumes', '--remove-orphans').quiet().nothrow();
+	if (process.env.KEEP !== '1')
+		await compose('down', '--volumes', '--remove-orphans').quiet().nothrow();
 }
 process.exit(status);

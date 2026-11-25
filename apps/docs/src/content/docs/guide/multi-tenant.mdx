@@ -3,7 +3,7 @@ title: Multi-tenant
 description: "Serve many issuers from one deployment: resolve the tenant first, then scope every check, key and token to that issuer."
 ---
 
-A SaaS often needs one OpenID Provider per tenant, or one per workspace, served from the same code. `oidc-primitive` is built for that shape: nothing in the package is global. Every issuer-dependent call takes the issuer as an argument (`TokenSigner.make({ issuer })`, `AccessTokenVerifier.make({ issuer })`, `Metadata.authorizationServer({ issuer })`), so per-tenant state is per-tenant wiring, not a refactor.
+A SaaS often needs one OpenID Provider per tenant, or one per workspace, served from the same code. `oidc-primitive` is built for that shape: nothing in the package is global. Every issuer-dependent call takes the issuer as an argument (`TokenSigner.make({ issuer })`, `AccessTokenVerifier.make({ issuer })`, `ServerMetadata.make({ issuer })`), so per-tenant state is per-tenant wiring, not a refactor.
 
 import PeleDiagram from '../../../components/PeleDiagram.astro';
 
@@ -15,7 +15,7 @@ import PeleDiagram from '../../../components/PeleDiagram.astro';
   participant L as oidc-primitive
   C->>A: GET /.well-known/openid-configuration
   Note over A: resolve tenant from host<br/>or path, before any check
-  A->>L: Metadata.authorizationServer<br/>with the tenant issuer
+  A->>L: ServerMetadata.make<br/>with the tenant issuer
   A-->>C: tenant metadata
   C->>A: GET /authorize
   A->>L: RedirectUri.matches<br/>against this tenant's clients
@@ -33,14 +33,14 @@ Tenant resolution is host code and it runs first. Decide it from the `Host` head
 - **Client registry.** Client IDs and redirect URIs belong to a tenant. A `client_id` that exists for tenant A must never authenticate at tenant B.
 - **Storage.** Key codes, refresh tokens and grants by issuer. The PKCE challenge stored for one tenant is meaningless under another.
 - **Keys.** One key set per tenant (`Keys.generate` per tenant, one `TokenSigner` per tenant). A tenant's tokens must be issuable only with that tenant's keys.
-- **Metadata.** `Metadata.authorizationServer({ issuer, endpoints })` per tenant, one `/.well-known/openid-configuration` per issuer.
-- **Verification.** A resource server that accepts several issuers builds one `AccessTokenVerifier` per issuer, each with its own `Keys.remoteSet`.
+- **Metadata.** `ServerMetadata.make({ issuer, endpoints })` per tenant, one `/.well-known/openid-configuration` per issuer.
+- **Verification.** A resource server that accepts several issuers builds one `AccessTokenVerifier` per issuer, each with its own `Keys.remoteResolver`.
 
 ```ts
 import { AccessTokenVerifier, Keys } from 'oidc-primitive';
 
 const verifierFor = (issuer: string) =>
-	AccessTokenVerifier.make({ issuer, audience: 'https://api.example.com', keys: Keys.remoteSet(`${issuer}/jwks`) });
+	AccessTokenVerifier.make({ issuer, audience: 'https://api.example.com', keys: Keys.remoteResolver(`${issuer}/jwks`) });
 ```
 
 ## Tenant boundaries are your enforcement

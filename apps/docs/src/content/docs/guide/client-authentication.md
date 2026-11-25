@@ -7,13 +7,13 @@ At the token endpoint the client proves who it is. The library parses and checks
 
 ## Store secrets as hashes
 
-[Token](/reference/token/) generates and hashes opaque credentials. When you issue a client secret, show it once and store only `Token.hash(secret)` ([RFC 6749 s10.10](https://www.rfc-editor.org/rfc/rfc6749#section-10.10)).
+[OpaqueToken](/reference/opaque-token/) generates and hashes opaque credentials. When you issue a client secret, show it once and store only `OpaqueToken.hash(secret)` ([RFC 6749 s10.10](https://www.rfc-editor.org/rfc/rfc6749#section-10.10)).
 
 ```ts
-import { Redacted, Token } from 'oidc-primitive';
+import { Redacted, OpaqueToken } from 'oidc-primitive';
 
-const secret = Token.generate();
-const secretHash: string = await Token.hash(secret);
+const secret = OpaqueToken.generate();
+const secretHash: string = await OpaqueToken.hash(secret);
 const shownOnce: string = Redacted.value(secret);
 ```
 
@@ -21,10 +21,10 @@ const shownOnce: string = Redacted.value(secret);
 
 `ClientSecret.parseBasic` reads an `Authorization: Basic` header ([RFC 6749 s2.3.1](https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1)). It returns `undefined` when the header is absent or uses another scheme. It throws `InvalidClient` when the header is malformed. The secret comes back as `Redacted<string>`.
 
-`Token.matchesHash` compares the presented secret to the stored hash in constant time.
+`OpaqueToken.matchesHash` compares the presented secret to the stored hash in constant time.
 
 ```ts
-import { OAuthError, ClientSecret, Redacted, Token } from 'oidc-primitive';
+import { OAuthError, ClientSecret, Redacted, OpaqueToken } from 'oidc-primitive';
 
 declare const request: Request;
 declare const form: URLSearchParams;
@@ -34,7 +34,7 @@ const basic = ClientSecret.parseBasic(request.headers.get('authorization'));
 const clientId = basic?.clientId ?? form.get('client_id') ?? '';
 const secret = basic ? Redacted.value(basic.clientSecret) : form.get('client_secret');
 const client = await findClient(clientId);
-if (!client || secret === null || !(await Token.matchesHash(secret, client.secretHash))) {
+if (!client || secret === null || !(await OpaqueToken.matchesHash(secret, client.secretHash))) {
 	throw new OAuthError.InvalidClient('client authentication failed');
 }
 ```
@@ -45,7 +45,7 @@ Use one message for an unknown client and a wrong secret. The host must also enf
 
 The client sends `client_assertion_type` and `client_assertion` in the form body. Check the type against `ClientAssertion.assertionType`, then call `ClientAssertion.verify` with the issuer, the client id and the client's public keys.
 
-`keys` is a `CryptoKey` or a jose key resolver. [Keys](/reference/keys/) builds resolvers: `Keys.localSet` for a JWK Set you store, `Keys.remoteSet` for a client `jwks_uri`.
+`keys` is a `CryptoKey` or a jose key resolver. [Keys](/reference/keys/) builds resolvers: `Keys.localResolver` for a JWK Set you store, `Keys.remoteResolver` for a client `jwks_uri`.
 
 ```ts
 import { ClientAssertion, Keys, OAuthError } from 'oidc-primitive';
@@ -62,7 +62,7 @@ if (form.get('client_assertion_type') !== ClientAssertion.assertionType) {
 const { jti, expiresAt } = await ClientAssertion.verify(form.get('client_assertion') ?? '', {
 	issuer,
 	clientId,
-	keys: Keys.localSet(clientJwks),
+	keys: Keys.localResolver(clientJwks),
 });
 if (!(await rememberJti(jti, expiresAt))) {
 	throw new OAuthError.InvalidClient('Client assertion is invalid');
@@ -82,6 +82,6 @@ Advertise the methods you accept in [discovery metadata](/guide/discovery-and-re
 - Look up the client and require the registered authentication method.
 - Rate-limit failed authentication per `client_id` and IP.
 - Record assertion `jti` values until they expire.
-- Store secrets only as `Token.hash`.
+- Store secrets only as `OpaqueToken.hash`.
 
 See the [Host checklist](/guide/host-checklist/).

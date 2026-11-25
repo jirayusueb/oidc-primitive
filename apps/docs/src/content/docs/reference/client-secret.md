@@ -3,7 +3,7 @@ title: ClientSecret
 description: Parse HTTP Basic client credentials for client_secret_basic and wrap the secret so it cannot be logged.
 ---
 
-`ClientSecret` parses `Authorization: Basic` credentials as [RFC 6749 section 2.3.1](https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1) defines them: base64 of `client_id:client_secret`, with each half form-urlencoded. The secret comes back as [Redacted](/reference/redacted/). Compare it to the stored hash with [`Token.matchesHash`](/reference/token/#matcheshash). See [client authentication](/guide/client-authentication/).
+`ClientSecret` parses `Authorization: Basic` credentials as [RFC 6749 section 2.3.1](https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1) defines them: base64 of `client_id:client_secret`, with each half form-urlencoded. The secret comes back as [Redacted](/reference/redacted/). Compare it to the stored hash with [`OpaqueToken.matchesHash`](/reference/opaque-token/#matcheshash). See [client authentication](/guide/client-authentication/).
 
 ## Import
 
@@ -37,7 +37,7 @@ Malformed means: a missing token, extra tokens, invalid base64, invalid UTF-8, n
 ```ts
 const creds = ClientSecret.parseBasic(request.headers.get('authorization'));
 if (creds !== undefined) {
-  const ok = await Token.matchesHash(creds.clientSecret, 'stored-hash');
+  const ok = await OpaqueToken.matchesHash(creds.clientSecret, 'stored-hash');
   console.log(creds.clientId, ok);
 }
 ```

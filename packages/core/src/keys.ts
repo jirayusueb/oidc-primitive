@@ -1,8 +1,19 @@
-import { calculateJwkThumbprint, createLocalJWKSet, createRemoteJWKSet, exportJWK, generateKeyPair } from 'jose';
+import {
+	calculateJwkThumbprint,
+	createLocalJWKSet,
+	createRemoteJWKSet,
+	exportJWK,
+	generateKeyPair,
+} from 'jose';
 import type { JWK, JWTVerifyGetKey, RemoteJWKSetOptions } from 'jose';
 
 /** Algorithms accepted for tokens this library signs and verifies (design D9). Frozen: nothing can widen it. */
-export const tokenAlgorithms: readonly string[] = Object.freeze(['ES256', 'EdDSA', 'PS256', 'RS256']);
+export const tokenAlgorithms: readonly string[] = Object.freeze([
+	'ES256',
+	'EdDSA',
+	'PS256',
+	'RS256',
+]);
 
 /** Asymmetric algorithms accepted for client assertions and advertised in metadata (RFC 8725 s3.1). */
 export const assertionAlgorithms: readonly string[] = Object.freeze([
@@ -44,7 +55,8 @@ export const publicJwk = async (
 ): Promise<JWK> => {
 	const jwk = publicKey instanceof CryptoKey ? await exportJWK(publicKey) : { ...publicKey };
 	for (const member of privateMembers) {
-		if (member in jwk) throw new TypeError(`refusing to publish a JWK with private member "${member}"`);
+		if (member in jwk)
+			throw new TypeError(`refusing to publish a JWK with private member "${member}"`);
 	}
 	return { ...jwk, kid, alg, use: 'sig' };
 };
@@ -61,7 +73,9 @@ export const thumbprint = (jwk: JWK): Promise<string> => calculateJwkThumbprint(
 export type VerifyKey = CryptoKey | JWK | JWTVerifyGetKey;
 
 /** A resolver over a JWK Set held locally, for example a client's registered `jwks`. */
-export const localResolver = (set: { readonly keys: ReadonlyArray<JWK> }): JWTVerifyGetKey => createLocalJWKSet({ keys: [...set.keys] })
+export const localResolver = (set: { readonly keys: ReadonlyArray<JWK> }): JWTVerifyGetKey =>
+	createLocalJWKSet({ keys: [...set.keys] });
 
 /** A caching resolver over a remote `jwks_uri`; jose refetches once on an unknown `kid`. */
-export const remoteResolver = (url: string | URL, options?: RemoteJWKSetOptions): JWTVerifyGetKey => createRemoteJWKSet(new URL(url), options)
+export const remoteResolver = (url: string | URL, options?: RemoteJWKSetOptions): JWTVerifyGetKey =>
+	createRemoteJWKSet(new URL(url), options);

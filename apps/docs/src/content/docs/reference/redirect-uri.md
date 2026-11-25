@@ -3,7 +3,7 @@ title: RedirectUri
 description: Validate redirect URIs at registration and match them exactly at request time.
 ---
 
-`RedirectUri` enforces the redirect URI rules of [RFC 6749 section 3.1.2](https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2), [RFC 8252 section 7](https://www.rfc-editor.org/rfc/rfc8252#section-7) and [RFC 9700 section 4.1.3](https://www.rfc-editor.org/rfc/rfc9700#section-4.1.3). Call `validate` when a client registers. Call `match` on every authorization request. See [authorization requests](/guide/authorization-requests/).
+`RedirectUri` enforces the redirect URI rules of [RFC 6749 section 3.1.2](https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2), [RFC 8252 section 7](https://www.rfc-editor.org/rfc/rfc8252#section-7) and [RFC 9700 section 4.1.3](https://www.rfc-editor.org/rfc/rfc9700#section-4.1.3). Call `validate` when a client registers. Call `find` on every authorization request. See [authorization requests](/guide/authorization-requests/).
 
 ## Import
 
@@ -44,10 +44,10 @@ RedirectUri.validate('https://client.example.com/cb');
 RedirectUri.validate('com.example.app:/oauth2redirect', { applicationType: 'native' });
 ```
 
-## match
+## find
 
 ```ts title="signature"
-const match: (requested: string, registered: ReadonlyArray<string>) => string | undefined;
+const find: (requested: string, registered: ReadonlyArray<string>) => string | undefined;
 ```
 
 Compares by exact string ([RFC 9700 section 4.1.3](https://www.rfc-editor.org/rfc/rfc9700#section-4.1.3)). One exception: for `http://127.0.0.1` and `http://[::1]` the port may differ ([RFC 8252 section 7.3](https://www.rfc-editor.org/rfc/rfc8252#section-7.3)). The host must be the same loopback literal, and everything else must be equal. `localhost` gets no port flexibility.
@@ -56,7 +56,7 @@ Returns the registered URI that matched, or `undefined`.
 
 ```ts
 const registered = ['https://client.example.com/cb', 'http://127.0.0.1/cb'];
-const uri = RedirectUri.match('http://127.0.0.1:51234/cb', registered);
+const uri = RedirectUri.find('http://127.0.0.1:51234/cb', registered);
 ```
 
 ## matches
@@ -65,7 +65,7 @@ const uri = RedirectUri.match('http://127.0.0.1:51234/cb', registered);
 const matches: (requested: string, registered: ReadonlyArray<string>) => boolean;
 ```
 
-True when `match` finds a registered URI.
+True when `find` finds a registered URI.
 
 ```ts
 if (!RedirectUri.matches('https://evil.example.com/cb', ['https://client.example.com/cb'])) {

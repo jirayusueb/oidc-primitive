@@ -49,7 +49,13 @@ export const verify = async (jwt: string, options: VerifyOptions): Promise<Verif
 	const audOk = aud === issuer || (Array.isArray(aud) && aud.length === 1 && aud[0] === issuer);
 	const now = Math.floor((currentDate ?? new Date()).getTime() / 1000);
 	// RFC 7519 s4.1.7: `jti` is a case-sensitive string; the host keys its replay record on it.
-	if (!audOk || typeof exp !== 'number' || typeof jti !== 'string' || jti === '' || exp - now > maxLifetime) {
+	if (
+		!audOk ||
+		typeof exp !== 'number' ||
+		typeof jti !== 'string' ||
+		jti === '' ||
+		exp - now > maxLifetime
+	) {
 		throw fail();
 	}
 	return { jti, expiresAt: exp };

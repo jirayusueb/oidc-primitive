@@ -1,0 +1,14 @@
+[
+	{
+		"test-name": "oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported",
+		"variant": {
+			"client_auth_type": "client_secret_basic",
+			"server_metadata": "discovery",
+			"response_type": "code",
+			"response_mode": "default",
+			"client_registration": "static_client"
+		},
+		"configuration-filename": ".cache/oidcc.json",
+		"comment": "oidc-primitive's example OP does not support request objects (request_parameter_supported is false); JAR arrives with PAR in a later milestone"
+	}
+]

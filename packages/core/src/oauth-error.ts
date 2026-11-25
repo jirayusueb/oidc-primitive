@@ -75,8 +75,14 @@ export class OAuthError extends Error {
 
 const bearer = (error: OAuthError, extra: Record<string, string | undefined>): Response => {
 	const headers = noStoreHeaders();
-	const description = error.description !== undefined && challengeValue.test(error.description) ? error.description : undefined;
-	headers.set('WWW-Authenticate', challenge('Bearer', { error: error.code, error_description: description, ...extra }));
+	const description =
+		error.description !== undefined && challengeValue.test(error.description)
+			? error.description
+			: undefined;
+	headers.set(
+		'WWW-Authenticate',
+		challenge('Bearer', { error: error.code, error_description: description, ...extra }),
+	);
 	return json(error.toJSON(), error.status, headers);
 };
 

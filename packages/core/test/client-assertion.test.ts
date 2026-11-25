@@ -8,7 +8,12 @@ const issuer = 'https://as.example.com';
 const clientId = 'client-1';
 const { publicKey, privateKey } = await generateKeyPair('ES256');
 
-const sign = (claims: Record<string, unknown>, exp: number | string = '5m', alg = 'ES256', key: CryptoKey | Uint8Array = privateKey) => {
+const sign = (
+	claims: Record<string, unknown>,
+	exp: number | string = '5m',
+	alg = 'ES256',
+	key: CryptoKey | Uint8Array = privateKey,
+) => {
 	const jwt = new SignJWT({ jti: 'j1', iss: clientId, sub: clientId, aud: issuer, ...claims })
 		.setProtectedHeader({ alg })
 		.setIssuedAt();
@@ -30,7 +35,8 @@ describe('RFC 7523 s3 and RFC 10070 s4 client assertion', () => {
 	});
 
 	it('rejects the token endpoint URL as aud', () => rejects(sign({ aud: `${issuer}/token` })));
-	it('rejects aud [issuer, other]', () => rejects(sign({ aud: [issuer, 'https://other.example'] })));
+	it('rejects aud [issuer, other]', () =>
+		rejects(sign({ aud: [issuer, 'https://other.example'] })));
 	it('rejects iss mismatch', () => rejects(sign({ iss: 'other' })));
 	it('rejects sub mismatch', () => rejects(sign({ sub: 'other' })));
 	it('rejects exp too far ahead', () => rejects(sign({}, '1h')));
@@ -40,16 +46,33 @@ describe('RFC 7523 s3 and RFC 10070 s4 client assertion', () => {
 	it('rejects HS256 even with an oct key', async () => {
 		const secret = new TextEncoder().encode('0123456789abcdef0123456789abcdef');
 		const jwt = await sign({}, '5m', 'HS256', secret);
-		const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-		await assert.rejects(ClientAssertion.verify(jwt, { issuer, clientId, keys: key }), InvalidClient);
+		const key = await crypto.subtle.importKey(
+			'raw',
+			secret,
+			{ name: 'HMAC', hash: 'SHA-256' },
+			false,
+			['verify'],
+		);
+		await assert.rejects(
+			ClientAssertion.verify(jwt, { issuer, clientId, keys: key }),
+			InvalidClient,
+		);
 	});
 
 	it('rejects a wrong key and an expired assertion', async () => {
 		const other = await generateKeyPair('ES256');
 		const jwt = await sign({});
-		await assert.rejects(ClientAssertion.verify(jwt, { issuer, clientId, keys: other.publicKey }), InvalidClient);
 		await assert.rejects(
-			ClientAssertion.verify(jwt, { issuer, clientId, keys: publicKey, currentDate: new Date(Date.now() + 3_600_000) }),
+			ClientAssertion.verify(jwt, { issuer, clientId, keys: other.publicKey }),
+			InvalidClient,
+		);
+		await assert.rejects(
+			ClientAssertion.verify(jwt, {
+				issuer,
+				clientId,
+				keys: publicKey,
+				currentDate: new Date(Date.now() + 3_600_000),
+			}),
 			InvalidClient,
 		);
 	});
@@ -61,12 +84,20 @@ describe('RFC 7523 s3 and RFC 10070 s4 client assertion', () => {
 		assert.equal(error.description, 'client assertion is invalid');
 		const rsa = await Keys.generate('RS384');
 		const jwt = await sign({}, '5m', 'RS384', rsa.privateKey);
-		assert.equal((await ClientAssertion.verify(jwt, { issuer, clientId, keys: rsa.publicKey })).jti, 'j1');
+		assert.equal(
+			(await ClientAssertion.verify(jwt, { issuer, clientId, keys: rsa.publicKey })).jti,
+			'j1',
+		);
 	});
 
 	it('verifies through a local JWK set', async () => {
-		const keys = Keys.localResolver({ keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })] });
-		assert.equal((await ClientAssertion.verify(await sign({}), { issuer, clientId, keys })).jti, 'j1');
+		const keys = Keys.localResolver({
+			keys: [await Keys.publicJwk(publicKey, { kid: 'k1', alg: 'ES256' })],
+		});
+		assert.equal(
+			(await ClientAssertion.verify(await sign({}), { issuer, clientId, keys })).jti,
+			'j1',
+		);
 	});
 
 	it('answers a forged alg that mismatches the key with InvalidClient, never 503 (B1)', async () => {
@@ -76,11 +107,17 @@ describe('RFC 7523 s3 and RFC 10070 s4 client assertion', () => {
 
 	it('answers an unreachable remote key set with TemporarilyUnavailable', async () => {
 		const keys = Keys.remoteResolver('http://127.0.0.1:1/jwks', { timeoutDuration: 500 });
-		await assert.rejects(ClientAssertion.verify(await sign({}), { issuer, clientId, keys }), TemporarilyUnavailable);
+		await assert.rejects(
+			ClientAssertion.verify(await sign({}), { issuer, clientId, keys }),
+			TemporarilyUnavailable,
+		);
 	});
 
 	it('exposes the assertion type', () => {
-		assert.equal(ClientAssertion.assertionType, 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer');
+		assert.equal(
+			ClientAssertion.assertionType,
+			'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+		);
 	});
 });
 
@@ -89,5 +126,23 @@ describe('RFC 7519 s4.1.7 jti', () => {
 		for (const jti of [5, { a: 1 }, ['x'], true, '']) {
 			await rejects(sign({ jti } as never));
 		}
+	});
+});
+
+describe('RFC 8725 s3.1 assertion algorithms', () => {
+	it('rejects an unsigned alg none assertion', async () => {
+		const b64 = (value: string): string =>
+			btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+		const now = Math.floor(Date.now() / 1000);
+		const payload = {
+			jti: 'j1',
+			iss: clientId,
+			sub: clientId,
+			aud: issuer,
+			iat: now,
+			exp: now + 60,
+		};
+		const jwt = `${b64(JSON.stringify({ alg: 'none' }))}.${b64(JSON.stringify(payload))}.`;
+		await assert.rejects(verify(jwt), InvalidClient);
 	});
 });

@@ -50,5 +50,6 @@ export class AccessTokenVerifier<S extends string = string> {
 	}
 }
 
-export const make = <const S extends string = string>(options: Options<S>): AccessTokenVerifier<S> =>
-	new AccessTokenVerifier(options);
+export const make = <const S extends string = string>(
+	options: Options<S>,
+): AccessTokenVerifier<S> => new AccessTokenVerifier(options);

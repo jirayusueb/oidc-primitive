@@ -3,7 +3,7 @@ title: Redacted
 description: A wrapper that keeps a credential out of logs, JSON output and console output.
 ---
 
-`Redacted` wraps a credential so it prints as `<redacted>` in strings, JSON and console output. [Token.generate](/reference/token/#generate) and [ClientSecret.parseBasic](/reference/client-secret/#parsebasic) return it. [OAuthResponse.json](/reference/oauth-response/#json) unwraps it on purpose when the value must reach the client. This is a library safeguard against accidental logging, not a protocol rule.
+`Redacted` wraps a credential so it prints as `<redacted>` in strings, JSON and console output. [OpaqueToken.generate](/reference/opaque-token/#generate) and [ClientSecret.parseBasic](/reference/client-secret/#parsebasic) return it. [OAuthResponse.json](/reference/oauth-response/#json) unwraps it on purpose when the value must reach the client. This is a library safeguard against accidental logging, not a protocol rule.
 
 ## Import
 

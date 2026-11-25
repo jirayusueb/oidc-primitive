@@ -19,10 +19,10 @@ declare const errorPage: (message: string) => Response;
 
 const requested = 'http://127.0.0.1:51234/callback';
 if (!RedirectUri.matches(requested, registered)) errorPage('Unregistered redirect_uri.');
-const registeredUri: string | undefined = RedirectUri.match(requested, registered);
+const registeredUri: string | undefined = RedirectUri.find(requested, registered);
 ```
 
-`RedirectUri.match` returns the registered URI that matched. `RedirectUri.matches` returns a boolean.
+`RedirectUri.find` returns the registered URI that matched. `RedirectUri.matches` returns a boolean.
 
 At client registration, call `RedirectUri.validate(uri, { applicationType })`. It rejects fragments, non-loopback `http`, and private-use schemes for `web` clients ([RFC 8252 s7.1](https://www.rfc-editor.org/rfc/rfc8252#section-7.1)). It throws `InvalidRequest`.
 
@@ -72,7 +72,7 @@ const wire: string = Scope.format(granted);
 
 ## 4. Resolve the resource
 
-When the request carries `resource` parameters, pass them all to `Resource.audience` with the issuer. It returns the single resource, or the issuer when none was sent. It throws `InvalidTarget` for several values, because one token serves one audience ([RFC 8707 s2](https://www.rfc-editor.org/rfc/rfc8707#section-2)).
+When the request carries `resource` parameters, pass them all to `Resource.resolveAudience` with the issuer. It returns the single resource, or the issuer when none was sent. It throws `InvalidTarget` for several values, because one token serves one audience ([RFC 8707 s2](https://www.rfc-editor.org/rfc/rfc8707#section-2)).
 
 ```ts
 import { Resource } from 'oidc-primitive';
@@ -80,7 +80,7 @@ import { Resource } from 'oidc-primitive';
 declare const params: URLSearchParams;
 declare const issuer: string;
 
-const audience: string = Resource.audience(params.getAll('resource'), issuer);
+const audience: string = Resource.resolveAudience(params.getAll('resource'), issuer);
 ```
 
 Store the audience with the code and use it as `aud` when you sign the access token. See [Resource](/reference/resource/).
@@ -93,7 +93,7 @@ Success is `OAuthResponse.redirect(redirectUri, { code, state }, { issuer })`. F
 
 - Reject unknown clients and unmatched redirect URIs with a page, not a redirect.
 - Decide per client whether PKCE is required.
-- Store the code as `Token.hash(code)` with a TTL of 60 seconds or less.
+- Store the code as `OpaqueToken.hash(code)` with a TTL of 60 seconds or less.
 - Send framing and referrer headers on login and consent pages. Do not enable CORS on this endpoint.
 
 The full list is in the [Host checklist](/guide/host-checklist/).

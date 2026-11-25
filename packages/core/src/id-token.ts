@@ -65,14 +65,19 @@ const hashBits: Record<string, string> = {
 };
 
 /** OIDC Core s3.1.3.6: left half of the hash that matches the signing algorithm's hash size, base64url. */
-export const atHash = async (accessToken: string | Redacted<string>, alg: string): Promise<string> => {
+export const atHash = async (
+	accessToken: string | Redacted<string>,
+	alg: string,
+): Promise<string> => {
 	const bits = alg === 'EdDSA' ? '512' : /^(?:ES|RS|PS)(256|384|512)K?$/.exec(alg)?.[1];
 	const name = bits === undefined ? undefined : hashBits[bits];
 	if (name === undefined) throw new TypeError(`no at_hash hash for algorithm "${alg}"`);
 	const digest =
 		name === 'SHA-256'
 			? await sha256(unwrap(accessToken))
-			: new Uint8Array(await crypto.subtle.digest(name, new TextEncoder().encode(unwrap(accessToken))));
+			: new Uint8Array(
+					await crypto.subtle.digest(name, new TextEncoder().encode(unwrap(accessToken))),
+				);
 	return base64url.encode(digest.subarray(0, digest.length / 2));
 };
 
@@ -81,11 +86,14 @@ export const sign = async (claims: Claims, options: SignOptions): Promise<string
 	const multiple = Array.isArray(claims.aud) && claims.aud.length > 1;
 	// OIDC Core s2: `azp` is the client_id of the party the token was issued to, and `aud` contains it.
 	if (multiple && (options.clientId === undefined || !claims.aud.includes(options.clientId))) {
-		throw new TypeError('IdToken.sign needs a clientId contained in aud when aud has several values');
+		throw new TypeError(
+			'IdToken.sign needs a clientId contained in aud when aud has several values',
+		);
 	}
 	const payload: JWTPayload = { ...claims };
 	if (multiple) payload.azp = options.clientId as string;
-	if (options.accessToken !== undefined) payload.at_hash = await atHash(options.accessToken, options.alg);
+	if (options.accessToken !== undefined)
+		payload.at_hash = await atHash(options.accessToken, options.alg);
 	const iat = Math.floor(Date.now() / 1000);
 	const expiresIn = options.expiresIn ?? defaultLifetime;
 	return new SignJWT(payload)
@@ -101,7 +109,13 @@ const invalid = (): InvalidRequest => new InvalidRequest('id_token_hint is inval
 /** OIDC Core s2: `iss` and `sub` are strings, `iat` and `exp` numbers. jose has checked `iss` and `aud` values. */
 const narrow = (payload: JWTPayload): VerifiedClaims => {
 	const { iss, sub, aud, iat, exp } = payload;
-	if (typeof iss !== 'string' || typeof sub !== 'string' || typeof iat !== 'number' || typeof exp !== 'number' || aud === undefined) {
+	if (
+		typeof iss !== 'string' ||
+		typeof sub !== 'string' ||
+		typeof iat !== 'number' ||
+		typeof exp !== 'number' ||
+		aud === undefined
+	) {
 		throw invalid();
 	}
 	return { ...payload, iss, sub, aud, iat, exp };

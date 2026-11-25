@@ -7,10 +7,10 @@ The Model Context Protocol rides on OAuth 2.1: an MCP server that requires autho
 
 ## What the package covers today
 
-- **PKCE with S256, required for public clients.** `Pkce.challenge` at the client, `Pkce.validateMethod` and `Pkce.verify` at your authorization endpoint. The library accepts only S256, which is what MCP requires.
-- **Resource indicators.** The MCP server's URL identifies the resource. `Resource.audience` puts it in the access token's `aud` ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707)), so a token for one MCP server does not work on another.
+- **PKCE with S256, required for public clients.** `Pkce.deriveChallenge` at the client, `Pkce.validateMethod` and `Pkce.verify` at your authorization endpoint. The library accepts only S256, which is what MCP requires.
+- **Resource indicators.** The MCP server's URL identifies the resource. `Resource.resolveAudience` puts it in the access token's `aud` ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707)), so a token for one MCP server does not work on another.
 - **Protected resource metadata.** `ResourceMetadata.make` and `ResourceMetadata.wellKnownUrl` build the `/.well-known/oauth-protected-resource` document ([RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)) that tells MCP clients which authorization server to use.
-- **Authorization server metadata.** `Metadata.authorizationServer` with OAuth 2.1 defaults for `/.well-known/oauth-authorization-server`.
+- **Authorization server metadata.** `ServerMetadata.make` with OAuth 2.1 defaults for `/.well-known/oauth-authorization-server`.
 - **Token verification at the MCP server.** `AccessTokenVerifier` bound to the issuer and to the MCP server's own URL as audience.
 
 ## What is not in the package yet
@@ -26,7 +26,7 @@ These are v1.1 roadmap items, each with its own design decision:
 Your host code keeps its normal shape. The authorization server is an OAuth 2.1 authorization server: authorization endpoint with PKCE, token endpoint with client authentication, discovery, a JWKS. The MCP-specific part is mostly metadata and audience discipline.
 
 ```ts
-import { Metadata, OAuthResponse, ResourceMetadata } from 'oidc-primitive';
+import { ServerMetadata, OAuthResponse, ResourceMetadata } from 'oidc-primitive';
 
 const protectedResource = ResourceMetadata.make({
 	resource: 'https://mcp.example.com',
@@ -37,4 +37,4 @@ const protectedResource = ResourceMetadata.make({
 if (get && path === '/.well-known/oauth-protected-resource') return OAuthResponse.json(protectedResource);
 ```
 
-Write the audience as the MCP server URL everywhere: in `Resource.audience` at the token endpoint, and in the `AccessTokenVerifier` the MCP server uses. See [Authorization code flow](/guide/authorization-code-flow/) for the endpoints, [Resource servers](/guide/resource-servers/) for the MCP server side, and the [roadmap](/roadmap/) for the planned MCP modules.
+Write the audience as the MCP server URL everywhere: in `Resource.resolveAudience` at the token endpoint, and in the `AccessTokenVerifier` the MCP server uses. See [Authorization code flow](/guide/authorization-code-flow/) for the endpoints, [Resource servers](/guide/resource-servers/) for the MCP server side, and the [roadmap](/roadmap/) for the planned MCP modules.

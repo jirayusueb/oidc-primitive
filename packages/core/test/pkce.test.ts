@@ -52,11 +52,17 @@ describe('RFC 9700 s2.1.1 S256 only', () => {
 
 describe('RFC 9700 s4.8.2 downgrade', () => {
 	it('rejects a verifier when no challenge was stored', async () => {
-		await assert.rejects(Pkce.verify(verifier, undefined, { required: false }), OAuthError.InvalidGrant);
+		await assert.rejects(
+			Pkce.verify(verifier, undefined, { required: false }),
+			OAuthError.InvalidGrant,
+		);
 	});
 
 	it('rejects a missing verifier when a challenge was stored', async () => {
-		await assert.rejects(Pkce.verify(undefined, challenge, { required: false }), OAuthError.InvalidGrant);
+		await assert.rejects(
+			Pkce.verify(undefined, challenge, { required: false }),
+			OAuthError.InvalidGrant,
+		);
 	});
 
 	it('requires PKCE unless the host exempts the client', async () => {

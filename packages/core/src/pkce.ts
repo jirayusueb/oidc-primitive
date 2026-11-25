@@ -16,7 +16,7 @@ export const isChallenge = (value: unknown): value is string =>
 export const deriveChallenge = async (verifier: string): Promise<string> => {
 	if (!isVerifier(verifier)) throw new InvalidRequest('code_verifier is malformed');
 	return sha256Base64url(verifier);
-}
+};
 
 /**
  * Check the authorization request's challenge method. Only S256 is accepted

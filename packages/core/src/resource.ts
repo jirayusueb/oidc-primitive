@@ -19,4 +19,4 @@ export const resolveAudience = (resources: ReadonlyArray<string>, issuer: string
 	const [resource] = unique as [string];
 	validate(resource);
 	return resource;
-}
+};

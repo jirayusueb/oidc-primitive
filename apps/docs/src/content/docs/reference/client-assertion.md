@@ -36,7 +36,7 @@ interface VerifyOptions {
 | --- | --- | --- | --- |
 | `issuer` | `string` | none | Your issuer identifier. Required `aud`. |
 | `clientId` | `string` | none | Required `iss` and `sub`. |
-| `keys` | [`Keys.VerifyKey`](/reference/keys/#verifykey) | none | The client's public key, or a resolver from `Keys.localSet` (registered `jwks`) or `Keys.remoteSet` (`jwks_uri`). |
+| `keys` | [`Keys.VerifyKey`](/reference/keys/#verifykey) | none | The client's public key, or a resolver from `Keys.localResolver` (registered `jwks`) or `Keys.remoteResolver` (`jwks_uri`). |
 | `clockTolerance` | `number` | `30` | Seconds of clock skew. |
 | `maxLifetime` | `number` | `600` | Maximum seconds `exp` may lie ahead of now. |
 | `currentDate` | `Date` | now | Clock override, for tests. |
@@ -68,7 +68,7 @@ Requires `iss`, `sub`, `aud`, `exp` and `jti`. `iss` and `sub` must equal `clien
 const { jti, expiresAt } = await ClientAssertion.verify(jwt, {
   issuer: 'https://op.example.com',
   clientId: 'client-1',
-  keys: Keys.remoteSet('https://client.example.com/jwks'),
+  keys: Keys.remoteResolver('https://client.example.com/jwks'),
 });
 // Store jti until expiresAt; reject the assertion if it was seen before.
 console.log(jti, expiresAt);

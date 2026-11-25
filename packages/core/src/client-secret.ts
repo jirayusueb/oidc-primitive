@@ -6,7 +6,8 @@ export interface BasicCredentials {
 	readonly clientSecret: Redacted<string>;
 }
 
-const malformed = (): InvalidClient => new InvalidClient('malformed Basic credentials', { scheme: 'Basic' });
+const malformed = (): InvalidClient =>
+	new InvalidClient('malformed Basic credentials', { scheme: 'Basic' });
 
 /** application/x-www-form-urlencoded decoding (RFC 6749 s2.3.1, Appendix B). */
 const formDecode = (value: string): string => decodeURIComponent(value.replaceAll('+', ' '));

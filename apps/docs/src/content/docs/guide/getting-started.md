@@ -17,17 +17,17 @@ npm i oidc-primitive
 Every module is a namespace on the package root:
 
 ```ts
-import { OAuthError, OAuthResponse, Pkce, RedirectUri, Token } from 'oidc-primitive';
+import { OAuthError, OAuthResponse, Pkce, RedirectUri, OpaqueToken } from 'oidc-primitive';
 ```
 
 ## At the authorization endpoint
 
 Check the redirect URI first. If it does not match a registered URI, render an error page. Never redirect to it ([RFC 9700 s4.11.2](https://www.rfc-editor.org/rfc/rfc9700#section-4.11.2)).
 
-Then check PKCE, generate a code and store only its hash. [Token](/reference/token/) generates and hashes. [Pkce](/reference/pkce/) checks the challenge. [RedirectUri](/reference/redirect-uri/) does the exact match.
+Then check PKCE, generate a code and store only its hash. [OpaqueToken](/reference/opaque-token/) generates and hashes. [Pkce](/reference/pkce/) checks the challenge. [RedirectUri](/reference/redirect-uri/) does the exact match.
 
 ```ts
-import { OAuthError, OAuthResponse, Pkce, RedirectUri, Token } from 'oidc-primitive';
+import { OAuthError, OAuthResponse, Pkce, RedirectUri, OpaqueToken } from 'oidc-primitive';
 
 declare const issuer: string;
 declare const registeredRedirectUris: string[];
@@ -45,8 +45,8 @@ export const authorize = async (params: URLSearchParams): Promise<Response> => {
 		const challenge = params.get('code_challenge');
 		if (!Pkce.isChallenge(challenge)) throw new OAuthError.InvalidRequest('code_challenge is malformed');
 
-		const code = Token.generate();
-		await storeCode(await Token.hash(code), challenge, redirectUri);
+		const code = OpaqueToken.generate();
+		await storeCode(await OpaqueToken.hash(code), challenge, redirectUri);
 		return OAuthResponse.redirect(redirectUri, { code, state }, { issuer });
 	} catch (err) {
 		if (err instanceof OAuthError.OAuthError) return err.toRedirect(redirectUri, { state, issuer });
@@ -62,7 +62,7 @@ export const authorize = async (params: URLSearchParams): Promise<Response> => {
 Hash the presented code, consume the stored record, and verify the PKCE verifier against the stored challenge. Any failure throws an `OAuthError`. Turn it into a response with `toResponse`.
 
 ```ts
-import { OAuthError, OAuthResponse, Pkce, Token } from 'oidc-primitive';
+import { OAuthError, OAuthResponse, Pkce, OpaqueToken } from 'oidc-primitive';
 
 declare const consumeCode: (
 	hash: string,
@@ -73,7 +73,7 @@ export const token = async (form: URLSearchParams): Promise<Response> => {
 	try {
 		const code = form.get('code');
 		if (!code) throw new OAuthError.InvalidRequest('code is required');
-		const record = await consumeCode(await Token.hash(code));
+		const record = await consumeCode(await OpaqueToken.hash(code));
 		if (!record) throw new OAuthError.InvalidGrant('code is invalid');
 		if (form.get('redirect_uri') !== record.redirectUri) {
 			throw new OAuthError.InvalidGrant('redirect_uri does not match');

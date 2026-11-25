@@ -7,24 +7,24 @@ These modules build the documents and responses around the token flow. None of t
 
 ## Metadata
 
-`Metadata.authorizationServer` builds the document served at `/.well-known/openid-configuration` and the [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414) equivalent. It returns a snake_case object. `Metadata.wellKnownUrls(issuer)` gives both URLs, with the well-known segment inserted the way each spec requires.
+`ServerMetadata.make` builds the document served at `/.well-known/openid-configuration` and the [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414) equivalent. It returns a snake_case object. `ServerMetadata.wellKnownUrls(issuer)` gives both URLs, with the well-known segment inserted the way each spec requires.
 
 ```ts
-import { Metadata, OAuthResponse } from 'oidc-primitive';
+import { ServerMetadata, OAuthResponse } from 'oidc-primitive';
 
 const issuer = 'https://op.example';
-const metadata = Metadata.authorizationServer({
+const metadata = ServerMetadata.make({
 	issuer,
 	endpoints: {
 		authorization: `${issuer}/authorize`,
 		token: `${issuer}/token`,
-		jwks: `${issuer}/jwks`,
+		jwksUri: `${issuer}/jwks`,
 		userinfo: `${issuer}/userinfo`,
 	},
 	scopes: ['openid', 'profile', 'email'],
 	idTokenSigningAlgs: ['RS256'],
 });
-const urls = Metadata.wellKnownUrls(issuer);
+const urls = ServerMetadata.wellKnownUrls(issuer);
 const respond = (): Response => OAuthResponse.json(metadata);
 ```
 
@@ -37,26 +37,26 @@ Defaults you should know about:
 - `id_token_signing_alg_values_supported` defaults to `['RS256']`.
 - `claims_parameter_supported` is `false` unless you set `claimsParameterSupported`. `request_parameter_supported` and `request_uri_parameter_supported` are `false`.
 
-Serve the document yourself. Metadata only builds it. See [Metadata](/reference/metadata/).
+Serve the document yourself. ServerMetadata only builds it. See [ServerMetadata](/reference/server-metadata/).
 
 ## Claims
 
 At userinfo and when you build an ID token, return only claims the scopes or the `claims` request parameter allow ([OIDC Core s5.4](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims), [s5.5](https://openid.net/specs/openid-connect-core-1_0.html#ClaimsParameter)).
 
-`Claims.parseRequest` parses the `claims` parameter and throws `InvalidRequest` when it is malformed. `Claims.select` filters your user record. `sub` is always kept.
+`UserClaims.parseRequest` parses the `claims` parameter and throws `InvalidRequest` when it is malformed. `UserClaims.select` filters your user record. `sub` is always kept.
 
 ```ts
-import { Claims } from 'oidc-primitive';
+import { UserClaims } from 'oidc-primitive';
 
 declare const params: URLSearchParams;
 declare const user: Record<string, unknown>;
 
-const request = Claims.parseRequest(params.get('claims'));
-const forUserinfo = Claims.select(user, { scopes: ['openid', 'email'], request, target: 'userinfo' });
-const names: string[] = Claims.forScopes(['profile']);
+const request = UserClaims.parseRequest(params.get('claims'));
+const forUserinfo = UserClaims.select(user, { scopes: ['openid', 'email'], request, target: 'userinfo' });
+const names: string[] = UserClaims.forScopes(['profile']);
 ```
 
-`target` is `'userinfo'` or `'id_token'`. See [Claims](/reference/claims/).
+`target` is `'userinfo'` or `'id_token'`. See [UserClaims](/reference/user-claims/).
 
 ## Introspection
 
@@ -99,7 +99,7 @@ export const guarded = async (): Promise<Response> => {
 };
 ```
 
-`toResponse()` uses the error's `status` and a no-store JSON body. `toRedirect(redirectUri, { state, issuer })` redirects the error to the client. `OAuthError.make(code, { status, description })` builds an error with any code, for extension specs.
+`toResponse()` uses the error's `status` and a no-store JSON body. `toRedirect(redirectUri, { state, issuer })` redirects the error to the client. `OAuthError.fromCode(code, { status, description })` builds an error with any code, for extension specs.
 
 Descriptions are sent to the client. Do not put request input, tokens or secrets in one. See [OAuthError](/reference/oauth-error/).
 

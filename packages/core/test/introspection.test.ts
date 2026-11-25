@@ -8,7 +8,23 @@ describe('RFC 7662 s2.2 introspection response', () => {
 	});
 
 	it('active maps known fields, passes extras, and cannot be overridden', () => {
-		const body = Introspection.active({ scope: 'a b', client_id: 'c', exp: 9, sub: 'u', aud: ['r'], tenant: 't', active: false });
-		assert.deepEqual(body, { scope: 'a b', client_id: 'c', exp: 9, sub: 'u', aud: ['r'], tenant: 't', active: true });
+		const body = Introspection.active({
+			scope: 'a b',
+			client_id: 'c',
+			exp: 9,
+			sub: 'u',
+			aud: ['r'],
+			tenant: 't',
+			active: false,
+		});
+		assert.deepEqual(body, {
+			scope: 'a b',
+			client_id: 'c',
+			exp: 9,
+			sub: 'u',
+			aud: ['r'],
+			tenant: 't',
+			active: true,
+		});
 	});
 });

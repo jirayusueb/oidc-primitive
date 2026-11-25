@@ -27,10 +27,10 @@ const isChallenge: (value: unknown) => value is string;
 
 True for a string of exactly 43 characters from `A-Z a-z 0-9 - _`. That is the length of a base64url SHA-256 digest ([RFC 7636 section 4.2](https://www.rfc-editor.org/rfc/rfc7636#section-4.2)). Check the `code_challenge` of an authorization request with it.
 
-## challenge
+## deriveChallenge
 
 ```ts title="signature"
-const challenge: (verifier: string) => Promise<string>;
+const deriveChallenge: (verifier: string) => Promise<string>;
 ```
 
 Returns `BASE64URL(SHA256(verifier))`. Throws `OAuthError.InvalidRequest` (`code_verifier is malformed`) when `verifier` fails `isVerifier`. Most servers never call this. It is useful in tests and clients.

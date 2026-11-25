@@ -34,7 +34,7 @@ const json: (body: unknown, init?: JsonInit) => Response;
 Returns a JSON response. Default headers are `Content-Type: application/json;charset=UTF-8`, `Cache-Control: no-store` and `Pragma: no-cache`. [Redacted](/reference/redacted/) values in `body` are unwrapped to their raw value, so a token you generated serializes as a real token.
 
 ```ts
-const token = Token.generate();
+const token = OpaqueToken.generate();
 return OAuthResponse.json({ access_token: token, token_type: 'Bearer', expires_in: 600 });
 ```
 
@@ -53,7 +53,7 @@ Returns a 303 response. `Location` is `redirectUri` with `params` and `iss` set 
 ```ts
 return OAuthResponse.redirect(
   'https://client.example.com/cb',
-  { code: Token.generate(), state: 'xyz' },
+  { code: OpaqueToken.generate(), state: 'xyz' },
   { issuer: 'https://op.example.com' },
 );
 ```

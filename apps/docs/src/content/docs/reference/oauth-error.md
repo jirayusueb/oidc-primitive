@@ -163,16 +163,16 @@ The first argument is the space-delimited scope the request needed. `toResponse(
 return new OAuthError.InsufficientScope('write').toResponse();
 ```
 
-## make
+## fromCode
 
 ```ts title="signature"
-const make: (code: Code | (string & {}), options?: Options) => OAuthError;
+const fromCode: (code: Code | (string & {}), options?: Options) => OAuthError;
 ```
 
 Builds an `OAuthError`. A registered `Code` returns its subclass, with the status and challenge the RFC defines, and ignores `options.status`. Any other code, for extension specs such as `use_dpop_nonce`, returns a base `OAuthError` that honors `options`.
 
 ```ts
-const error = OAuthError.make('use_dpop_nonce', { status: 401 });
+const error = OAuthError.fromCode('use_dpop_nonce', { status: 401 });
 ```
 
 ## Spec

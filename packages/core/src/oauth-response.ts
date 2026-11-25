@@ -1,4 +1,9 @@
-import { type ParamValue, json as jsonResponse, noStoreHeaders, redirect as redirectResponse } from './internal/http.ts';
+import {
+	type ParamValue,
+	json as jsonResponse,
+	noStoreHeaders,
+	redirect as redirectResponse,
+} from './internal/http.ts';
 
 export interface JsonInit {
 	readonly status?: number;

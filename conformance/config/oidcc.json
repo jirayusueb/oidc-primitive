@@ -98,7 +98,14 @@
 							"task": "Expect the error page",
 							"match": "https://op.test/authorize*",
 							"commands": [
-								["wait", "xpath", "//*", 10, "Invalid authorization request", "update-image-placeholder"]
+								[
+									"wait",
+									"xpath",
+									"//*",
+									10,
+									"Invalid authorization request",
+									"update-image-placeholder"
+								]
 							]
 						}
 					]
@@ -115,7 +122,14 @@
 							"task": "Expect the error page",
 							"match": "https://op.test/authorize*",
 							"commands": [
-								["wait", "xpath", "//*", 10, "Invalid authorization request", "update-image-placeholder"]
+								[
+									"wait",
+									"xpath",
+									"//*",
+									10,
+									"Invalid authorization request",
+									"update-image-placeholder"
+								]
 							]
 						}
 					]

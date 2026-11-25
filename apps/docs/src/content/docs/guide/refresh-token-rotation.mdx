@@ -15,11 +15,11 @@ import PeleDiagram from '../../../components/PeleDiagram.astro';
   participant L as oidc-primitive
   C->>A: POST /token<br/>grant_type=refresh_token
   A->>L: ClientSecret.parseBasic
-  A->>L: Token.hash
+  A->>L: OpaqueToken.hash
   Note over A: find row by hash<br/>check exp and client
   Note over A: swap used 0 -> 1 atomically
-  A->>L: TokenSigner.accessToken
-  A->>L: Token.generate, Token.hash
+  A->>L: TokenSigner.signAccessToken
+  A->>L: OpaqueToken.generate, OpaqueToken.hash
   A-->>C: new access token<br/>and new refresh token
   C->>A: the old token again
   Note over A: swap finds used=1<br/>theft: revoke the grant
@@ -28,7 +28,7 @@ import PeleDiagram from '../../../components/PeleDiagram.astro';
 
 ## Storage
 
-- Store `Token.hash(refresh)` only, never the token.
+- Store `OpaqueToken.hash(refresh)` only, never the token.
 - Rotation is a compare-and-swap: `UPDATE ... SET used = 1 WHERE hash = ? AND used = 0`. When the update touches zero rows, the token was already rotated: revoke the whole grant and answer `invalid_grant`.
 - A short grace window for concurrent retries is your policy; log every grace use.
 
@@ -38,9 +38,9 @@ import PeleDiagram from '../../../components/PeleDiagram.astro';
 - The refreshed ID token gets no `nonce` (OIDC Core s12.2). Pass `withNonce: false` at the token endpoint.
 
 ```ts
-import { OAuthError, Scope, Token } from 'oidc-primitive';
+import { OAuthError, Scope, OpaqueToken } from 'oidc-primitive';
 
-const h = await Token.hash(f.get('refresh_token') ?? '');
+const h = await OpaqueToken.hash(f.get('refresh_token') ?? '');
 const swapped = db.query('UPDATE refresh SET used = 1 WHERE hash = ? AND used = 0').run(h);
 if (swapped.changes === 0) {
 	revokeGrant(row.grant_id); // reuse of a rotated token

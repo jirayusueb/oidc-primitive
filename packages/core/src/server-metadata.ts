@@ -79,14 +79,22 @@ const compact = <T extends object>(doc: T): T =>
 export const make = (options: AuthorizationServerOptions): AuthorizationServerMetadata => {
 	const { issuer, endpoints: e } = options;
 	parseIssuer(issuer);
-	const authMethods = options.tokenEndpointAuthMethodsSupported ?? ['client_secret_basic', 'client_secret_post', 'private_key_jwt'];
+	const authMethods = options.tokenEndpointAuthMethodsSupported ?? [
+		'client_secret_basic',
+		'client_secret_post',
+		'private_key_jwt',
+	];
 	const signingAlgs = options.tokenEndpointAuthSigningAlgValuesSupported ?? assertionAlgorithms;
 	if (signingAlgs.some((alg) => !assertionAlgorithms.includes(alg))) {
-		throw new TypeError('token_endpoint_auth_signing_alg_values_supported must be assertionAlgorithms');
+		throw new TypeError(
+			'token_endpoint_auth_signing_alg_values_supported must be assertionAlgorithms',
+		);
 	}
 	const idAlgs = options.idTokenSigningAlgValuesSupported ?? ['RS256'];
 	if (!idAlgs.includes('RS256') && options.allowWithoutRs256 !== true) {
-		throw new TypeError('id_token_signing_alg_values_supported must include RS256 (OIDC Discovery s3)');
+		throw new TypeError(
+			'id_token_signing_alg_values_supported must include RS256 (OIDC Discovery s3)',
+		);
 	}
 	const doc = {
 		issuer,
@@ -106,7 +114,9 @@ export const make = (options: AuthorizationServerOptions): AuthorizationServerMe
 		// OIDC Discovery s3: RS256 MUST be listed, so it is the default.
 		id_token_signing_alg_values_supported: idAlgs,
 		token_endpoint_auth_methods_supported: authMethods,
-		token_endpoint_auth_signing_alg_values_supported: authMethods.includes('private_key_jwt') ? signingAlgs : undefined,
+		token_endpoint_auth_signing_alg_values_supported: authMethods.includes('private_key_jwt')
+			? signingAlgs
+			: undefined,
 		claims_supported: options.claimsSupported,
 		code_challenge_methods_supported: ['S256'],
 		authorization_response_iss_parameter_supported: true,
@@ -119,7 +129,9 @@ export const make = (options: AuthorizationServerOptions): AuthorizationServerMe
 };
 
 /** OIDC Discovery s4 and RFC 8414 s3.1 (well-known segment inserted between host and path). */
-export const wellKnownUrls = (issuer: string): { openidConfiguration: string; oauthAuthorizationServer: string } => {
+export const wellKnownUrls = (
+	issuer: string,
+): { openidConfiguration: string; oauthAuthorizationServer: string } => {
 	const url = parseIssuer(issuer);
 	// RFC 8414 s3.1: any terminating "/" is removed before inserting the well-known segment.
 	const path = url.pathname.replace(/\/$/, '');

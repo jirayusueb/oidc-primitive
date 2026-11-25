@@ -28,7 +28,11 @@ export interface ClientConfig {
 	client_id: string;
 	client_secret?: string;
 	redirect_uris: string[];
-	token_endpoint_auth_method: 'client_secret_basic' | 'client_secret_post' | 'private_key_jwt' | 'none';
+	token_endpoint_auth_method:
+		| 'client_secret_basic'
+		| 'client_secret_post'
+		| 'private_key_jwt'
+		| 'none';
 	jwks_uri?: string;
 	pkce?: 'required' | 'oidc-nonce';
 	grant_types?: string[];
@@ -48,7 +52,13 @@ export const fromEnv = (): Config => ({
 	database: process.env.DATABASE ?? ':memory:',
 	clients: process.env.CLIENTS
 		? JSON.parse(process.env.CLIENTS)
-		: [{ client_id: 'demo', redirect_uris: ['http://127.0.0.1:3001/callback'], token_endpoint_auth_method: 'none' }],
+		: [
+				{
+					client_id: 'demo',
+					redirect_uris: ['http://127.0.0.1:3001/callback'],
+					token_endpoint_auth_method: 'none',
+				},
+			],
 });
 
 interface Client {
@@ -82,8 +92,20 @@ interface Grant {
 
 const scopesSupported = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'];
 const claimsSupported = [
-	'sub', 'iss', 'auth_time', 'acr', 'name', 'given_name', 'family_name', 'preferred_username', 'email',
-	'email_verified', 'address', 'phone_number', 'phone_number_verified', 'updated_at',
+	'sub',
+	'iss',
+	'auth_time',
+	'acr',
+	'name',
+	'given_name',
+	'family_name',
+	'preferred_username',
+	'email',
+	'email_verified',
+	'address',
+	'phone_number',
+	'phone_number_verified',
+	'updated_at',
 ];
 const accessTtl = AccessToken.defaultLifetime; // seconds, the lifetime TokenSigner uses by default
 const codeTtl = 60; // checklist: authorization codes live 60 s or less
@@ -92,7 +114,10 @@ const spentTtl = 24 * 3600;
 
 const now = (): number => Math.floor(Date.now() / 1000);
 const esc = (s: string): string =>
-	s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+	s.replace(
+		/[&<>"']/g,
+		(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+	);
 
 // Checklist: login and error pages must not be framed and must not leak the URL.
 const pageHeaders = {
@@ -109,14 +134,27 @@ const page = (title: string, body: string, status = 200): Response =>
 	});
 // RFC 9700 s4.11.2: never redirect to an unverified redirect_uri; show the error instead.
 const errorPage = (message: string): Response =>
-	page('Invalid authorization request', `<h1>Invalid authorization request</h1><p>${esc(message)}</p>`, 400);
+	page(
+		'Invalid authorization request',
+		`<h1>Invalid authorization request</h1><p>${esc(message)}</p>`,
+		400,
+	);
 
 const userClaims = (username: string, sub: string): Record<string, unknown> => ({
 	sub,
 	name: `${username} Example`,
 	given_name: username,
 	family_name: 'Example',
+	middle_name: 'Middle',
+	nickname: username,
 	preferred_username: username,
+	profile: `https://op.test/users/${encodeURIComponent(username)}`,
+	picture: 'https://op.test/picture.png',
+	website: 'https://op.test',
+	gender: 'nonbinary',
+	birthdate: '2000-01-01',
+	zoneinfo: 'Asia/Bangkok',
+	locale: 'th-TH',
 	email: `${username}@example.com`,
 	email_verified: true,
 	address: { formatted: '1 Example Street, Bangkok, Thailand' },
@@ -135,8 +173,13 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		if (c.token_endpoint_auth_method === 'private_key_jwt' && !c.jwks_uri) {
 			throw new Error(`client ${c.client_id}: jwks_uri is required for private_key_jwt`);
 		}
-		if (['client_secret_basic', 'client_secret_post'].includes(c.token_endpoint_auth_method) && !c.client_secret) {
-			throw new Error(`client ${c.client_id}: client_secret is required for ${c.token_endpoint_auth_method}`);
+		if (
+			['client_secret_basic', 'client_secret_post'].includes(c.token_endpoint_auth_method) &&
+			!c.client_secret
+		) {
+			throw new Error(
+				`client ${c.client_id}: client_secret is required for ${c.token_endpoint_auth_method}`,
+			);
 		}
 		for (const uri of c.redirect_uris) RedirectUri.validate(uri);
 		clients.set(c.client_id, {
@@ -184,7 +227,12 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		scopesSupported,
 		claimsSupported,
 		grantTypesSupported: ['authorization_code', 'refresh_token', 'client_credentials'],
-		tokenEndpointAuthMethodsSupported: ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'none'],
+		tokenEndpointAuthMethodsSupported: [
+			'client_secret_basic',
+			'client_secret_post',
+			'private_key_jwt',
+			'none',
+		],
 		idTokenSigningAlgValuesSupported: ['RS256'],
 		claimsParameterSupported: true,
 	});
@@ -193,19 +241,27 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 
 	type Session = { username: string; sub: string; auth_time: number };
 	const session = async (req: Request): Promise<Session | undefined> => {
-		const sid = req.headers.get('cookie')?.split(/;\s*/).find((c) => c.startsWith('sid='))?.slice(4);
+		const sid = req.headers
+			.get('cookie')
+			?.split(/;\s*/)
+			.find((c) => c.startsWith('sid='))
+			?.slice(4);
 		if (!sid) return undefined;
-		return (db.query('SELECT username, sub, auth_time FROM sessions WHERE hash = ?').get(await OpaqueToken.hash(sid)) ??
-			undefined) as Session | undefined;
+		return (db
+			.query('SELECT username, sub, auth_time FROM sessions WHERE hash = ?')
+			.get(await OpaqueToken.hash(sid)) ?? undefined) as Session | undefined;
 	};
-	const revokeGrant = (id: string): void => void db.query('UPDATE grants SET revoked = 1 WHERE id = ?').run(id);
+	const revokeGrant = (id: string): void =>
+		void db.query('UPDATE grants SET revoked = 1 WHERE id = ?').run(id);
 	const grantOf = (id: string): Grant | undefined => {
-		const row = db.query('SELECT data, revoked FROM grants WHERE id = ?').get(id) as
-			| { data: string; revoked: number }
-			| null;
+		const row = db.query('SELECT data, revoked FROM grants WHERE id = ?').get(id) as {
+			data: string;
+			revoked: number;
+		} | null;
 		return row && !row.revoked ? (JSON.parse(row.data) as Grant) : undefined;
 	};
-	const form = async (req: Request): Promise<URLSearchParams> => new URLSearchParams(await req.text());
+	const form = async (req: Request): Promise<URLSearchParams> =>
+		new URLSearchParams(await req.text());
 
 	// ---- authorization endpoint (OIDC Core s3.1.2) ----------------------------------------------
 
@@ -222,7 +278,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			return await authorizeChecked(req, p, client, redirectUri, state);
 		} catch (err) {
 			// RFC 6749 s4.1.2.1 + RFC 9207: errors go back to the verified redirect_uri with `iss`.
-			if (err instanceof OAuthError.OAuthError) return err.toRedirect(redirectUri, { state, issuer });
+			if (err instanceof OAuthError.OAuthError)
+				return err.toRedirect(redirectUri, { state, issuer });
 			throw err;
 		}
 	};
@@ -234,26 +291,34 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		redirectUri: string,
 		state: string | undefined,
 	): Promise<Response> => {
-		if (p.has('request')) throw new OAuthError.RequestNotSupported('request objects are not supported'); // OIDC Core s6.1
-		if (p.has('request_uri')) throw new OAuthError.RequestUriNotSupported('request_uri is not supported'); // s6.2
-		if (p.has('registration')) throw new OAuthError.RegistrationNotSupported('registration is not supported'); // s7.2.1
-		if (p.get('response_type') !== 'code') throw new OAuthError.UnsupportedResponseType('only response_type=code');
+		if (p.has('request'))
+			throw new OAuthError.RequestNotSupported('request objects are not supported'); // OIDC Core s6.1
+		if (p.has('request_uri'))
+			throw new OAuthError.RequestUriNotSupported('request_uri is not supported'); // s6.2
+		if (p.has('registration'))
+			throw new OAuthError.RegistrationNotSupported('registration is not supported'); // s7.2.1
+		if (p.get('response_type') !== 'code')
+			throw new OAuthError.UnsupportedResponseType('only response_type=code');
 		if (!client.grant_types.includes('authorization_code')) {
 			throw new OAuthError.UnauthorizedClient('client may not use the authorization code flow');
 		}
 		const mode = p.get('response_mode');
-		if (mode !== null && mode !== 'query') throw new OAuthError.InvalidRequest('only response_mode=query');
+		if (mode !== null && mode !== 'query')
+			throw new OAuthError.InvalidRequest('only response_mode=query');
 
 		// RFC 6749 s3.3: unknown scopes are dropped, not fatal.
 		const scope = Scope.parse(p.get('scope')).filter((s) => scopesSupported.includes(s));
 		const nonce = p.get('nonce') ?? undefined;
 
-		// PKCE (RFC 7636 s4.3, RFC 9700 s2.1.1, design D13): only a confidential `oidc-nonce` client that sent a nonce may skip it.
+		// PKCE (RFC 7636 s4.3, RFC 9700 s2.1.1, design D13): a confidential `oidc-nonce` client may skip it
+		// (nonce is still echoed and bound into the ID token when the client sends one; the Basic plan
+		// requires a nonce-less request from a confidential client to succeed).
 		const challenge = p.get('code_challenge') ?? undefined;
-		const exempt = client.pkce === 'oidc-nonce' && client.method !== 'none' && nonce !== undefined;
+		const exempt = client.pkce === 'oidc-nonce' && client.method !== 'none';
 		if (challenge !== undefined) {
 			Pkce.validateMethod(p.get('code_challenge_method'));
-			if (!Pkce.isChallenge(challenge)) throw new OAuthError.InvalidRequest('code_challenge is malformed');
+			if (!Pkce.isChallenge(challenge))
+				throw new OAuthError.InvalidRequest('code_challenge is malformed');
 		} else if (!exempt) {
 			throw new OAuthError.InvalidRequest('PKCE with code_challenge_method=S256 is required');
 		}
@@ -262,7 +327,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const claims = UserClaims.parseRequest(p.get('claims')); // OIDC Core s5.5
 
 		const prompts = (p.get('prompt') ?? '').split(' ').filter(Boolean);
-		if (prompts.includes('none') && prompts.length > 1) throw new OAuthError.InvalidRequest('prompt=none is exclusive');
+		if (prompts.includes('none') && prompts.length > 1)
+			throw new OAuthError.InvalidRequest('prompt=none is exclusive');
 		const maxAgeParam = p.get('max_age');
 		const maxAge = maxAgeParam === null ? undefined : Number(maxAgeParam);
 		if (maxAge !== undefined && !(Number.isInteger(maxAge) && maxAge >= 0)) {
@@ -272,7 +338,12 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		// OIDC Core s3.1.2.1: id_token_hint is checked with the OP's own key; expiry is tolerated.
 		const hintJwt = p.get('id_token_hint');
 		const hint = hintJwt
-			? await IdToken.verify(hintJwt, { issuer, audience: client.client_id, keys: publicKey, allowExpired: true })
+			? await IdToken.verify(hintJwt, {
+					issuer,
+					audience: client.client_id,
+					keys: publicKey,
+					allowExpired: true,
+				})
 			: undefined;
 
 		const sess = await session(req);
@@ -283,7 +354,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			(hint !== undefined && hint.sub !== sess.sub);
 		if (needLogin) {
 			// OIDC Core s3.1.2.6: prompt=none must never show UI.
-			if (prompts.includes('none')) throw new OAuthError.LoginRequired('end-user is not authenticated');
+			if (prompts.includes('none'))
+				throw new OAuthError.LoginRequired('end-user is not authenticated');
 			// Strip what has been satisfied by logging in, or we would loop.
 			const back = new URLSearchParams(p);
 			back.delete('id_token_hint');
@@ -293,7 +365,10 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			const returnTo = `${base}/authorize?${back}`;
 			return new Response(null, {
 				status: 303,
-				headers: { Location: `${base}/login?return_to=${encodeURIComponent(returnTo)}`, 'Cache-Control': 'no-store' },
+				headers: {
+					Location: `${base}/login?return_to=${encodeURIComponent(returnTo)}`,
+					'Cache-Control': 'no-store',
+				},
 			});
 		}
 
@@ -312,7 +387,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			claims,
 			auth_time: sess.auth_time,
 			// OIDC Core s2: auth_time is required when max_age was sent, and when asked for via `claims`.
-			include_auth_time: maxAge !== undefined || (claims.id_token !== undefined && 'auth_time' in claims.id_token),
+			include_auth_time:
+				maxAge !== undefined || (claims.id_token !== undefined && 'auth_time' in claims.id_token),
 			acr: p.get('acr_values')?.split(' ')[0],
 			grant_id: Redacted.value(OpaqueToken.generate(16)),
 		};
@@ -370,7 +446,10 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const basic = ClientSecret.parseBasic(req.headers.get('authorization'));
 		// RFC 6749 s5.2: answer with a Basic challenge only when the client tried Basic.
 		const fail = (): OAuthError.InvalidClient =>
-			new OAuthError.InvalidClient('client authentication failed', basic ? { scheme: 'Basic' } : {});
+			new OAuthError.InvalidClient(
+				'client authentication failed',
+				basic ? { scheme: 'Basic' } : {},
+			);
 		const assertion = f.get('client_assertion');
 		if (assertion !== null) {
 			if (f.get('client_assertion_type') !== ClientAssertion.assertionType) throw fail();
@@ -382,9 +461,10 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			// Peek at the unverified payload only to find the candidate; ClientAssertion.verify binds it below.
 			const peekSub = (): string | undefined => {
 				try {
-					const payload = JSON.parse(atob(assertion.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/'))) as {
-						sub?: unknown;
-					};
+					// atob is Latin-1; decode the bytes as UTF-8 so a non-ASCII sub still resolves.
+					const b64 = assertion.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/');
+					const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+					const payload = JSON.parse(new TextDecoder().decode(bytes)) as { sub?: unknown };
 					return typeof payload.sub === 'string' ? payload.sub : undefined;
 				} catch {
 					return undefined;
@@ -399,16 +479,23 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			});
 			// Checklist: record each assertion jti until it expires and reject a repeat (RFC 7523 s3 item 7).
 			const fresh = db
-				.query('INSERT INTO assertions(client_id, jti, exp) VALUES (?, ?, ?) ON CONFLICT DO NOTHING RETURNING jti')
+				.query(
+					'INSERT INTO assertions(client_id, jti, exp) VALUES (?, ?, ?) ON CONFLICT DO NOTHING RETURNING jti',
+				)
 				.get(client.client_id, jti, expiresAt);
 			if (!fresh) throw fail();
 			return client;
+		}
+		// RFC 6749 s2.3: one authentication method per request, also for Basic plus a body secret.
+		if (basic !== undefined && f.has('client_secret')) {
+			throw new OAuthError.InvalidRequest('use only one client authentication method');
 		}
 		const secret = basic ? Redacted.value(basic.clientSecret) : f.get('client_secret');
 		const method = basic ? 'client_secret_basic' : secret !== null ? 'client_secret_post' : 'none';
 		const client = clients.get(basic?.clientId ?? f.get('client_id') ?? '');
 		if (!client || client.method !== method) throw fail();
-		if (method !== 'none' && !(await OpaqueToken.matchesHash(secret!, client.secretHash!))) throw fail();
+		if (method !== 'none' && !(await OpaqueToken.matchesHash(secret!, client.secretHash!)))
+			throw fail();
 		return client;
 	};
 
@@ -428,15 +515,21 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		};
 		if (scope.includes('openid')) {
 			// OIDC Core s3.1.3.6/s2: aud = client_id, nonce echoed, at_hash binds the ID token to the access token.
-			body.id_token = await signer.signIdToken({
-					...UserClaims.select(userClaims(g.username, g.sub), { scopes: [], request: g.claims, target: 'id_token' }),
+			body.id_token = await signer.signIdToken(
+				{
+					...UserClaims.select(userClaims(g.username, g.sub), {
+						scopes: [],
+						request: g.claims,
+						target: 'id_token',
+					}),
 					sub: g.sub,
 					aud: g.client_id,
 					nonce: withNonce ? g.nonce : undefined,
 					auth_time: g.include_auth_time ? g.auth_time : undefined,
 					acr: g.acr,
 				},
-				{ accessToken: access },);
+				{ accessToken: access },
+			);
 		}
 		if (g.scope.length && clients.get(g.client_id)?.grant_types.includes('refresh_token')) {
 			const refresh = OpaqueToken.generate();
@@ -454,7 +547,11 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const f = await form(req);
 		const client = await authenticate(req, f);
 		const type = f.get('grant_type');
-		if (type !== null && client.grant_types.includes(type) === false && type !== 'client_credentials') {
+		if (
+			type !== null &&
+			client.grant_types.includes(type) === false &&
+			type !== 'client_credentials'
+		) {
 			throw new OAuthError.UnauthorizedClient('grant type not allowed for this client');
 		}
 
@@ -463,20 +560,29 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			if (!code) throw new OAuthError.InvalidRequest('code is required');
 			const h = await OpaqueToken.hash(code);
 			// Checklist: consume atomically. Everything after this point happens only if the delete found the row.
-			const row = db.query('DELETE FROM codes WHERE hash = ? RETURNING data, exp').get(h) as
-				| { data: string; exp: number }
-				| null;
+			const row = db.query('DELETE FROM codes WHERE hash = ? RETURNING data, exp').get(h) as {
+				data: string;
+				exp: number;
+			} | null;
 			if (!row) {
 				// OAuth 2.1 s7.5.3: a spent code replayed -> revoke everything issued from it.
-				const spent = db.query('SELECT grant_id FROM spent WHERE hash = ?').get(h) as { grant_id: string } | null;
+				const spent = db.query('SELECT grant_id FROM spent WHERE hash = ?').get(h) as {
+					grant_id: string;
+				} | null;
 				if (spent) revokeGrant(spent.grant_id);
 				throw new OAuthError.InvalidGrant('code is invalid');
 			}
 			const g = JSON.parse(row.data) as Grant;
-			db.query('INSERT INTO spent(hash, grant_id, exp) VALUES (?, ?, ?)').run(h, g.grant_id, now() + spentTtl);
-			if (row.exp < now() || g.client_id !== client.client_id) throw new OAuthError.InvalidGrant('code is invalid');
+			db.query('INSERT INTO spent(hash, grant_id, exp) VALUES (?, ?, ?)').run(
+				h,
+				g.grant_id,
+				now() + spentTtl,
+			);
+			if (row.exp < now() || g.client_id !== client.client_id)
+				throw new OAuthError.InvalidGrant('code is invalid');
 			// RFC 6749 s4.1.3: redirect_uri was sent at /authorize, so it must repeat exactly.
-			if (f.get('redirect_uri') !== g.redirect_uri) throw new OAuthError.InvalidGrant('redirect_uri does not match');
+			if (f.get('redirect_uri') !== g.redirect_uri)
+				throw new OAuthError.InvalidGrant('redirect_uri does not match');
 			await Pkce.verify(f.get('code_verifier'), g.challenge, { required: g.pkce_required });
 			db.query('INSERT INTO grants(id, data) VALUES (?, ?)').run(g.grant_id, JSON.stringify(g));
 			return issueTokens(g, g.scope, true);
@@ -486,9 +592,11 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			const rt = f.get('refresh_token');
 			if (!rt) throw new OAuthError.InvalidRequest('refresh_token is required');
 			const h = await OpaqueToken.hash(rt);
-			const row = db.query('SELECT grant_id, used, exp FROM refresh WHERE hash = ?').get(h) as
-				| { grant_id: string; used: number; exp: number }
-				| null;
+			const row = db.query('SELECT grant_id, used, exp FROM refresh WHERE hash = ?').get(h) as {
+				grant_id: string;
+				used: number;
+				exp: number;
+			} | null;
 			const g = row && grantOf(row.grant_id);
 			if (!row || !g || g.client_id !== client.client_id || row.exp < now()) {
 				throw new OAuthError.InvalidGrant('refresh_token is invalid');
@@ -500,7 +608,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 				throw new OAuthError.InvalidGrant('refresh_token is invalid');
 			}
 			const requested = f.has('scope') ? Scope.parse(f.get('scope')) : g.scope;
-			if (!requested.every((s) => g.scope.includes(s))) throw new OAuthError.InvalidScope('scope exceeds the grant');
+			if (!requested.every((s) => g.scope.includes(s)))
+				throw new OAuthError.InvalidScope('scope exceeds the grant');
 			return issueTokens(g, requested, false); // OIDC Core s12.2: no nonce on refresh
 		}
 
@@ -509,14 +618,21 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 			if (client.method === 'none' || !client.grant_types.includes(type)) {
 				throw new OAuthError.UnauthorizedClient('client_credentials not allowed');
 			}
-			const scope = Scope.parse(f.get('scope')).filter((s) => scopesSupported.includes(s) && s !== 'openid');
+			const scope = Scope.parse(f.get('scope')).filter(
+				(s) => scopesSupported.includes(s) && s !== 'openid',
+			);
 			const access = await signer.signAccessToken({
 				sub: client.client_id,
 				aud: Resource.resolveAudience(f.getAll('resource'), issuer),
 				client_id: client.client_id,
 				scope: Scope.format(scope),
 			});
-			return OAuthResponse.json({ access_token: access, token_type: 'Bearer', expires_in: accessTtl, scope: Scope.format(scope) });
+			return OAuthResponse.json({
+				access_token: access,
+				token_type: 'Bearer',
+				expires_in: accessTtl,
+				scope: Scope.format(scope),
+			});
 		}
 		throw new OAuthError.UnsupportedGrantType('unsupported grant_type');
 	};
@@ -526,7 +642,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 	const userinfo = async (req: Request): Promise<Response> => {
 		let bearer = Bearer.parse(req.headers);
 		// RFC 6750 s2.2: POST form-encoded body is also allowed.
-		if (bearer === undefined && req.method === 'POST') bearer = (await form(req)).get('access_token') ?? undefined;
+		if (bearer === undefined && req.method === 'POST')
+			bearer = (await form(req)).get('access_token') ?? undefined;
 		if (bearer === undefined) throw new OAuthError.InvalidToken();
 		const v = await verifier.verify(bearer);
 		const gid = v.claims.gid;
@@ -534,17 +651,25 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		if (!g) throw new OAuthError.InvalidToken('token is invalid'); // revoked grant or client_credentials token
 		if (!v.scope.includes('openid')) throw new OAuthError.InsufficientScope('openid');
 		return OAuthResponse.json(
-			UserClaims.select(userClaims(g.username, g.sub), { scopes: v.scope, request: g.claims, target: 'userinfo' }),
+			UserClaims.select(userClaims(g.username, g.sub), {
+				scopes: v.scope,
+				request: g.claims,
+				target: 'userinfo',
+			}),
 		);
 	};
 
 	// ---- introspection (RFC 7662) and revocation (RFC 7009) ------------------------------------
 
 	/** The grant and owner behind an access (JWT) or refresh token, if still live. */
-	const resolve = async (t: string): Promise<{ grant: Grant; refresh?: { exp: number } ; access?: AccessTokenVerifier.Verified } | undefined> => {
-		const row = db.query('SELECT grant_id, used, exp FROM refresh WHERE hash = ?').get(await OpaqueToken.hash(t)) as
-			| { grant_id: string; used: number; exp: number }
-			| null;
+	const resolve = async (
+		t: string,
+	): Promise<
+		{ grant: Grant; refresh?: { exp: number }; access?: AccessTokenVerifier.Verified } | undefined
+	> => {
+		const row = db
+			.query('SELECT grant_id, used, exp FROM refresh WHERE hash = ?')
+			.get(await OpaqueToken.hash(t)) as { grant_id: string; used: number; exp: number } | null;
 		if (row) {
 			const grant = grantOf(row.grant_id);
 			return grant && !row.used && row.exp > now() ? { grant, refresh: row } : undefined;
@@ -564,7 +689,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const t = f.get('token');
 		const r = t ? await resolve(t) : undefined;
 		// Only the client the token was issued to may see it.
-		if (!r || r.grant.client_id !== client.client_id) return OAuthResponse.json(Introspection.inactive());
+		if (!r || r.grant.client_id !== client.client_id)
+			return OAuthResponse.json(Introspection.inactive());
 		const g = r.grant;
 		return OAuthResponse.json(
 			Introspection.active(
@@ -581,7 +707,14 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 							iss: issuer,
 							jti: r.access.claims.jti,
 						}
-					: { scope: g.scope.join(' '), client_id: g.client_id, username: g.username, exp: r.refresh!.exp, sub: g.sub, iss: issuer },
+					: {
+							scope: g.scope.join(' '),
+							client_id: g.client_id,
+							username: g.username,
+							exp: r.refresh!.exp,
+							sub: g.sub,
+							iss: issuer,
+						},
 			),
 		);
 	};
@@ -602,7 +735,8 @@ export const start = async (config: Config): Promise<Bun.Server<undefined>> => {
 		const u = new URL(req.url);
 		const m = req.method;
 		// RFC 8414 s3.1: well-known segment inserted before the issuer path.
-		if (m === 'GET' && u.pathname === `/.well-known/oauth-authorization-server${base}`) return OAuthResponse.json(metadata);
+		if (m === 'GET' && u.pathname === `/.well-known/oauth-authorization-server${base}`)
+			return OAuthResponse.json(metadata);
 		if (!u.pathname.startsWith(base)) return new Response('not found', { status: 404 });
 		const path = u.pathname.slice(base.length);
 		const get = m === 'GET';

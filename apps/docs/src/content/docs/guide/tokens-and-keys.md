@@ -18,7 +18,7 @@ const { publicKey, privateKey } = await Keys.generate('RS256');
 const jwks = await Keys.jwks([{ key: publicKey, kid: 'op-1', alg: 'RS256' }]);
 ```
 
-Serve `jwks` as JSON at the URL you give to [Metadata](/reference/metadata/). See [Keys](/reference/keys/).
+Serve `jwks` as JSON at the URL you give to [ServerMetadata](/reference/server-metadata/). See [Keys](/reference/keys/).
 
 ## TokenSigner
 
@@ -37,7 +37,7 @@ The `key` must be a private `CryptoKey`. See [TokenSigner](/reference/token-sign
 
 ## AccessToken
 
-`signer.accessToken` signs an [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068) JWT. The library sets `typ: at+jwt`, `iss`, `iat`, `exp` and `jti`. You supply `sub`, `aud`, `client_id` and optionally `scope`. Use the `Resource.audience` result as `aud`. `expiresIn` defaults to `"10m"`.
+`signer.signAccessToken` signs an [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068) JWT. The library sets `typ: at+jwt`, `iss`, `iat`, `exp` and `jti`. You supply `sub`, `aud`, `client_id` and optionally `scope`. Use the `Resource.resolveAudience` result as `aud`. `expiresIn` defaults to `"10m"`.
 
 ```ts
 import { Scope, type TokenSigner } from 'oidc-primitive';
@@ -45,7 +45,7 @@ import { Scope, type TokenSigner } from 'oidc-primitive';
 declare const signer: TokenSigner.TokenSigner;
 declare const audience: string;
 
-const accessToken = await signer.accessToken(
+const accessToken = await signer.signAccessToken(
 	{ sub: 'user-1', aud: audience, client_id: 'demo', scope: Scope.format(['openid', 'profile']) },
 	{ expiresIn: '5m' },
 );
@@ -55,7 +55,7 @@ Extra claims pass through. The [Example OP](/guide/example-op/) adds a `gid` cla
 
 ## IdToken
 
-`signer.idToken` signs an ID token. The library sets `iss`, `iat`, `exp`, and adds `azp` when `aud` has several values. Pass `accessToken` to add `at_hash` ([OIDC Core s3.1.3.6](https://openid.net/specs/openid-connect-core-1_0.html#CodeIDToken)).
+`signer.signIdToken` signs an ID token. The library sets `iss`, `iat`, `exp`, and adds `azp` when `aud` has several values. Pass `accessToken` to add `at_hash` ([OIDC Core s3.1.3.6](https://openid.net/specs/openid-connect-core-1_0.html#CodeIDToken)).
 
 ```ts
 import { type TokenSigner } from 'oidc-primitive';
@@ -63,7 +63,7 @@ import { type TokenSigner } from 'oidc-primitive';
 declare const signer: TokenSigner.TokenSigner;
 declare const accessToken: string;
 
-const idToken = await signer.idToken(
+const idToken = await signer.signIdToken(
 	{ sub: 'user-1', aud: 'demo', nonce: 'n-0S6_WzA2Mj', auth_time: 1700000000 },
 	{ accessToken },
 );
@@ -105,6 +105,6 @@ Verification accepts only `ES256`, `EdDSA`, `PS256` and `RS256` (`Keys.tokenAlgo
 
 - Persist and rotate signing keys.
 - Choose token lifetimes.
-- Store refresh tokens as `Token.hash` and rotate them with compare-and-swap.
+- Store refresh tokens as `OpaqueToken.hash` and rotate them with compare-and-swap.
 
 See the [Host checklist](/guide/host-checklist/).

@@ -27,16 +27,16 @@ interface Options {
 ```ts title="signature"
 class TokenSigner {
   constructor(options: Options);
-  idToken(claims: IdToken.Claims, perCall?: Omit<IdToken.SignOptions, 'issuer' | 'key' | 'kid' | 'alg'>): Promise<string>;
-  accessToken(claims: AccessToken.Claims, perCall?: Omit<AccessToken.SignOptions, 'issuer' | 'key' | 'kid' | 'alg'>): Promise<string>;
+  signIdToken(claims: IdToken.Claims, perCall?: Omit<IdToken.SignOptions, 'issuer' | 'key' | 'kid' | 'alg'>): Promise<string>;
+  signAccessToken(claims: AccessToken.Claims, perCall?: Omit<AccessToken.SignOptions, 'issuer' | 'key' | 'kid' | 'alg'>): Promise<string>;
 }
 ```
 
-### idToken
+### signIdToken
 
 Calls `IdToken.sign`. `perCall` may set `clientId`, `expiresIn` and `accessToken`. Throws what `IdToken.sign` throws.
 
-### accessToken
+### signAccessToken
 
 Calls `AccessToken.sign`. `perCall` may set `expiresIn`.
 
@@ -56,11 +56,11 @@ const signer = TokenSigner.make({
   alg: 'ES256',
 });
 
-const accessToken = await signer.accessToken(
+const accessToken = await signer.signAccessToken(
   { sub: 'user-1', aud: 'https://api.example.com', client_id: 'client-1', scope: 'read' },
   { expiresIn: '5m' },
 );
-const idToken = await signer.idToken(
+const idToken = await signer.signIdToken(
   { sub: 'user-1', aud: 'client-1' },
   { accessToken },
 );

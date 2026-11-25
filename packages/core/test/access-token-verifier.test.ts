@@ -10,7 +10,12 @@ const { publicKey, privateKey } = await Keys.generate('ES256');
 const signer = TokenSigner.make({ issuer, key: privateKey, kid: 'k1', alg: 'ES256' });
 const read = Scope.make('read');
 const admin = Scope.make('admin');
-const verifier = AccessTokenVerifier.make({ issuer, audience, keys: publicKey, scopes: [read, admin] });
+const verifier = AccessTokenVerifier.make({
+	issuer,
+	audience,
+	keys: publicKey,
+	scopes: [read, admin],
+});
 const issue = (scope?: string): Promise<string> =>
 	signer.signAccessToken({ sub: 'u', aud: audience, client_id: 'c', scope });
 
@@ -30,12 +35,14 @@ describe('RFC 9068 s4 resource server verification', () => {
 
 	it('rejects an invalid token', async () => {
 		await assert.rejects(verifier.verify('nope'), InvalidToken);
-		const jwt = await new SignJWT({}).setProtectedHeader({ alg: 'ES256', typ: 'JWT' }).sign(privateKey);
+		const jwt = await new SignJWT({})
+			.setProtectedHeader({ alg: 'ES256', typ: 'JWT' })
+			.sign(privateKey);
 		await assert.rejects(verifier.verify(jwt), InvalidToken);
 	});
 });
 
-describe('RFC 6750 s2.1 verifyRequest', () => {
+describe('RFC 6750 s2.1 verifyHeaders', () => {
 	it('reads the Authorization header only', async () => {
 		const jwt = await issue('read');
 		const v = await verifier.verifyHeaders(new Headers({ Authorization: `Bearer ${jwt}` }));
@@ -53,15 +60,28 @@ describe('RFC 6750 s2.1 verifyRequest', () => {
 	});
 
 	it('throws InvalidToken for a malformed Bearer credential', async () => {
-		await assert.rejects(verifier.verifyHeaders(new Headers({ Authorization: 'Bearer a b' })), InvalidToken);
+		await assert.rejects(
+			verifier.verifyHeaders(new Headers({ Authorization: 'Bearer a b' })),
+			InvalidToken,
+		);
 	});
 });
 
 describe('RFC 9449 s7.1 confirm passthrough', () => {
 	it('rejects cnf tokens without confirm and accepts with it', async () => {
-		const jwt = await signer.signAccessToken({ sub: 'u', aud: audience, client_id: 'c', cnf: { jkt: 'x' } });
+		const jwt = await signer.signAccessToken({
+			sub: 'u',
+			aud: audience,
+			client_id: 'c',
+			cnf: { jkt: 'x' },
+		});
 		await assert.rejects(verifier.verify(jwt), InvalidToken);
-		const bound = AccessTokenVerifier.make({ issuer, audience, keys: publicKey, confirm: () => {} });
+		const bound = AccessTokenVerifier.make({
+			issuer,
+			audience,
+			keys: publicKey,
+			confirm: () => {},
+		});
 		assert.deepEqual((await bound.verify(jwt)).claims.cnf, { jkt: 'x' });
 	});
 });

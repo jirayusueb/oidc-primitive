@@ -51,7 +51,7 @@ interface Verified<S extends string = string> {
 class AccessTokenVerifier<S extends string = string> {
   constructor(options: Options<S>);
   verify(token: string): Promise<Verified<S>>;
-  verifyRequest(headers: Headers): Promise<Verified<S>>;
+  verifyHeaders(headers: Headers): Promise<Verified<S>>;
 }
 ```
 
@@ -61,9 +61,9 @@ Runs `AccessToken.verify` with the bound options, then parses the `scope` claim.
 
 Throws every error `AccessToken.verify` throws, plus `OAuthError.InvalidToken` (`token is invalid`) when `scope` is malformed.
 
-### verifyRequest
+### verifyHeaders
 
-Calls `Bearer.extract(headers)` and then `verify`. Throws `OAuthError.MissingToken` when there is no Bearer credential (RFC 6750 section 3.1). Throws `OAuthError.InvalidToken` when the credential is malformed.
+Calls `Bearer.parse(headers)` and then `verify`. Throws `OAuthError.MissingToken` when there is no Bearer credential (RFC 6750 section 3.1). Throws `OAuthError.InvalidToken` when the credential is malformed.
 
 ## make
 
@@ -77,12 +77,12 @@ Same as `new AccessTokenVerifier(options)`. The `const` parameter keeps the lite
 const verifier = AccessTokenVerifier.make({
   issuer: 'https://op.example.com',
   audience: 'https://api.example.com',
-  keys: Keys.remoteSet('https://op.example.com/jwks'),
+  keys: Keys.remoteResolver('https://op.example.com/jwks'),
   scopes: ['read', 'write'],
 });
 
 try {
-  const { claims, granted } = await verifier.verifyRequest(request.headers);
+  const { claims, granted } = await verifier.verifyHeaders(request.headers);
   console.log(claims.sub, granted);
 } catch (error) {
   if (error instanceof OAuthError.OAuthError) return error.toResponse();
@@ -93,6 +93,6 @@ try {
 ## Spec
 
 - [RFC 9068 section 4](https://www.rfc-editor.org/rfc/rfc9068#section-4): resource server verification.
-- [RFC 6750 section 2.1](https://www.rfc-editor.org/rfc/rfc6750#section-2.1): `verifyRequest` reads the `Authorization` header.
+- [RFC 6750 section 2.1](https://www.rfc-editor.org/rfc/rfc6750#section-2.1): `verifyHeaders` reads the `Authorization` header.
 - [RFC 6750 section 3.1](https://www.rfc-editor.org/rfc/rfc6750#section-3.1): a missing credential gets a bare `Bearer` challenge.
 - [RFC 9449 section 7.1](https://www.rfc-editor.org/rfc/rfc9449#section-7.1): `confirm` passes through.

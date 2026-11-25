@@ -12,9 +12,13 @@ describe('RFC 8707 s2 resource indicators', () => {
 	});
 
 	it('accepts one absolute resource and rejects several or fragments', () => {
-		assert.equal(Resource.resolveAudience(['https://api.example'], 'https://as.example'), 'https://api.example');
+		assert.equal(
+			Resource.resolveAudience(['https://api.example'], 'https://as.example'),
+			'https://api.example',
+		);
 		assert.throws(
-			() => Resource.resolveAudience(['https://a.example', 'https://b.example'], 'https://as.example'),
+			() =>
+				Resource.resolveAudience(['https://a.example', 'https://b.example'], 'https://as.example'),
 			OAuthError.InvalidTarget,
 		);
 		assert.throws(() => Resource.validate('https://api.example#x'), OAuthError.InvalidTarget);

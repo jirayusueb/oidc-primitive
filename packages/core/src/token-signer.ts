@@ -22,7 +22,10 @@ export class TokenSigner {
 		return IdToken.sign(claims, { ...perCall, ...this.#options });
 	}
 
-	signAccessToken(claims: AccessToken.Claims, perCall?: Omit<AccessToken.SignOptions, Bound>): Promise<string> {
+	signAccessToken(
+		claims: AccessToken.Claims,
+		perCall?: Omit<AccessToken.SignOptions, Bound>,
+	): Promise<string> {
 		return AccessToken.sign(claims, { ...perCall, ...this.#options });
 	}
 }

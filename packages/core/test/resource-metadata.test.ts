@@ -22,14 +22,30 @@ describe('RFC 9728 s2 protected resource metadata', () => {
 	});
 
 	it('requires authorization servers and a valid resource', () => {
-		assert.throws(() => ResourceMetadata.make({ resource: 'https://api.example', authorizationServers: [] }), TypeError);
-		assert.throws(() => ResourceMetadata.make({ resource: 'http://api.example', authorizationServers: ['x'] }), TypeError);
-		assert.throws(() => ResourceMetadata.make({ resource: 'https://api.example#f', authorizationServers: ['x'] }), TypeError);
+		assert.throws(
+			() => ResourceMetadata.make({ resource: 'https://api.example', authorizationServers: [] }),
+			TypeError,
+		);
+		assert.throws(
+			() => ResourceMetadata.make({ resource: 'http://api.example', authorizationServers: ['x'] }),
+			TypeError,
+		);
+		assert.throws(
+			() =>
+				ResourceMetadata.make({ resource: 'https://api.example#f', authorizationServers: ['x'] }),
+			TypeError,
+		);
 	});
 
 	it('inserts the well-known segment before the path', () => {
-		assert.equal(ResourceMetadata.wellKnownUrl('https://api.example/v1/items'), 'https://api.example/.well-known/oauth-protected-resource/v1/items');
-		assert.equal(ResourceMetadata.wellKnownUrl('https://api.example'), 'https://api.example/.well-known/oauth-protected-resource');
+		assert.equal(
+			ResourceMetadata.wellKnownUrl('https://api.example/v1/items'),
+			'https://api.example/.well-known/oauth-protected-resource/v1/items',
+		);
+		assert.equal(
+			ResourceMetadata.wellKnownUrl('https://api.example'),
+			'https://api.example/.well-known/oauth-protected-resource',
+		);
 	});
 });
 

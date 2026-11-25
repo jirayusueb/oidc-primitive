@@ -19,10 +19,10 @@ const validate: (uri: string) => void;
 
 Returns nothing when `uri` is an absolute URI without a fragment ([RFC 8707 section 2](https://www.rfc-editor.org/rfc/rfc8707#section-2)). Throws `OAuthError.InvalidTarget` (`resource must be an absolute URI without a fragment`) otherwise.
 
-## audience
+## resolveAudience
 
 ```ts title="signature"
-const audience: (resources: ReadonlyArray<string>, issuer: string) => string;
+const resolveAudience: (resources: ReadonlyArray<string>, issuer: string) => string;
 ```
 
 Returns the access token audience for the requested resources:
@@ -33,7 +33,7 @@ Returns the access token audience for the requested resources:
 
 ```ts
 const params = new URL(request.url).searchParams;
-const aud = Resource.audience(params.getAll('resource'), 'https://op.example.com');
+const aud = Resource.resolveAudience(params.getAll('resource'), 'https://op.example.com');
 ```
 
 ## Spec

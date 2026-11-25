@@ -12,18 +12,18 @@ Every OAuth and OpenID Connect flow appears below with its status. The host owns
 
 | Flow | Spec | Status | Modules the host composes |
 | --- | --- | --- | --- |
-| Authorization code with PKCE, including OIDC sign-in | RFC 6749 s4.1, RFC 7636, OIDC Core s3.1 | v1.0 | `RedirectUri`, `Pkce`, `Scope`, `Resource`, `Token`, `OAuthResponse.redirect`, `ClientSecret` or `ClientAssertion`, and `TokenSigner` |
-| Refresh token with rotation | OAuth 2.1 draft-17 s4.3 | v1.0 | `Token` and `TokenSigner`. Rotation and reuse detection run in host storage, as `docs/host-checklist.md` describes. |
+| Authorization code with PKCE, including OIDC sign-in | RFC 6749 s4.1, RFC 7636, OIDC Core s3.1 | v1.0 | `RedirectUri`, `Pkce`, `Scope`, `Resource`, `OpaqueToken`, `OAuthResponse.redirect`, `ClientSecret` or `ClientAssertion`, and `TokenSigner` |
+| Refresh token with rotation | OAuth 2.1 draft-17 s4.3 | v1.0 | `OpaqueToken` and `TokenSigner`. Rotation and reuse detection run in host storage, as `docs/host-checklist.md` describes. |
 | Client credentials | RFC 6749 s4.4 | v1.0 | `ClientSecret` or `ClientAssertion`, `Scope`, `Resource`, and `AccessToken` |
-| UserInfo | OIDC Core s5.3 | v1.0 | `AccessTokenVerifier`, `Claims.select`, and `OAuthResponse.json` |
+| UserInfo | OIDC Core s5.3 | v1.0 | `AccessTokenVerifier`, `UserClaims.select`, and `OAuthResponse.json` |
 | Token introspection | RFC 7662 | v1.0 | `ClientSecret` or `ClientAssertion`, and `Introspection` |
-| Token revocation | RFC 7009 | v1.0, host only | `ClientSecret`, `Token.hash`, and `OAuthResponse.json({})` |
+| Token revocation | RFC 7009 | v1.0, host only | `ClientSecret`, `OpaqueToken.hash`, and `OAuthResponse.json({})` |
 | Resource server access | RFC 6750, RFC 9068, RFC 9728 | v1.0 | `Bearer`, `AccessTokenVerifier`, `ResourceMetadata`, and `OAuthError.toResponse` |
 | RP-initiated logout | OIDC RP-Initiated Logout 1.0 | v1.0 modules, conformance gate in v1.1 | `IdToken.verify` with `allowExpired`, and `RedirectUri.matches` |
 | Third-party-initiated login | OIDC Core s4 | Host only | None. The host redirects to the client's registered `initiate_login_uri`. |
 | Pushed authorization requests | RFC 9126 | v1.1 | `Par`, then the authorization code modules |
 | DPoP-bound tokens | RFC 9449 | v1.1 | `Dpop` and the `confirm` option of `AccessTokenVerifier` |
-| Device authorization | RFC 8628 | v1.1 | `DeviceCode`, `Token`, and `AccessToken`. The `authorization_pending`, `slow_down`, and `expired_token` errors come from `OAuthError.make`. |
+| Device authorization | RFC 8628 | v1.1 | `DeviceCode`, `OpaqueToken`, and `AccessToken`. The `authorization_pending`, `slow_down`, and `expired_token` errors come from `OAuthError.fromCode`. |
 | MCP clients identified by a metadata URL | CIMD draft 03 | v1.1 | `ClientMetadataDocument`, then the authorization code modules |
 | Form post response mode | OAuth 2.0 Form Post Response Mode | v1.1 | `FormPost` |
 | Back-channel logout | OIDC Back-Channel Logout 1.0 | v1.1 | `LogoutToken` |
@@ -45,7 +45,7 @@ Every OAuth and OpenID Connect flow appears below with its status. The host owns
 
 ### Multi-tenant authorization servers
 
-A tenant is an issuer. Every function that depends on the issuer takes `issuer` as an argument, and the host builds one `TokenSigner` and one `AccessTokenVerifier` per tenant. The package keeps no global state, so tenants share nothing through it. `Metadata.wellKnownUrls` handles subdomain issuers (`https://a.as.example`) and path issuers (`https://as.example/tenant/a`).
+A tenant is an issuer. Every function that depends on the issuer takes `issuer` as an argument, and the host builds one `TokenSigner` and one `AccessTokenVerifier` per tenant. The package keeps no global state, so tenants share nothing through it. `ServerMetadata.wellKnownUrls` handles subdomain issuers (`https://a.as.example`) and path issuers (`https://as.example/tenant/a`).
 
 The host resolves the tenant from the request host or path before it runs any check. The host also keys its storage by issuer, which covers signing keys, clients, codes, refresh tokens, and replay records.
 
@@ -58,8 +58,8 @@ The host resolves the tenant from the request host or path before it runs any ch
 
 No IETF or OpenID Foundation spec defines API keys. The package supports two ways to use them.
 
-1. Exchange the key for an access token. This is the recommended way, and it works with v1.0. The client sends the API key as its client secret in a `client_credentials` request. The token endpoint checks it with `ClientSecret.parseBasic` and `Token.matchesHash`, then returns a short-lived JWT access token whose `iss` is the tenant. Resource servers see only RFC 9068 tokens, so they need no key lookup. When the host revokes a key, the key stops working at once, and tokens issued with it stay valid until they expire.
-2. Check the key at the resource server on every request. The `ApiKey` module in v1.1 covers this case. The host stores `Token.hash` of each key together with its tenant and scopes, and the resource server looks the key up by that hash.
+1. Exchange the key for an access token. This is the recommended way, and it works with v1.0. The client sends the API key as its client secret in a `client_credentials` request. The token endpoint checks it with `ClientSecret.parseBasic` and `OpaqueToken.matchesHash`, then returns a short-lived JWT access token whose `iss` is the tenant. Resource servers see only RFC 9068 tokens, so they need no key lookup. When the host revokes a key, the key stops working at once, and tokens issued with it stay valid until they expire.
+2. Check the key at the resource server on every request. The `ApiKey` module in v1.1 covers this case. The host stores `OpaqueToken.hash` of each key together with its tenant and scopes, and the resource server looks the key up by that hash.
 
 ## v1.0: code flow, OIDC Core, resource servers
 
@@ -68,10 +68,10 @@ The modules are written. Commit `e082417` passed 93 tests on Bun and Node, `tsc`
 | Area | Modules | Specs |
 | --- | --- | --- |
 | Authorization request checks | `Pkce`, `RedirectUri`, `Scope`, `Resource` | RFC 7636 (S256 only), RFC 9700, RFC 8252, RFC 8707 |
-| Client authentication | `ClientSecret`, `ClientAssertion`, `Token` | RFC 6749 s2.3.1, RFC 7523 with the RFC 10070 issuer-only `aud` rule |
+| Client authentication | `ClientSecret`, `ClientAssertion`, `OpaqueToken` | RFC 6749 s2.3.1, RFC 7523 with the RFC 10070 issuer-only `aud` rule |
 | Tokens | `IdToken`, `AccessToken`, `TokenSigner`, `Keys` | OIDC Core, RFC 9068, RFC 7517, RFC 7638 |
 | Resource servers | `AccessTokenVerifier`, `Bearer`, `ResourceMetadata` | RFC 9068, RFC 6750, RFC 9728 |
-| Metadata and responses | `Metadata`, `Claims`, `Introspection`, `OAuthResponse`, `OAuthError`, `Redacted` | RFC 8414, OIDC Discovery, RFC 7662, RFC 9207 |
+| Metadata and responses | `ServerMetadata`, `UserClaims`, `Introspection`, `OAuthResponse`, `OAuthError`, `Redacted` | RFC 8414, OIDC Discovery, RFC 7662, RFC 9207 |
 
 These items remain before `1.0.0`:
 
@@ -96,7 +96,7 @@ These items remain before `1.0.0`:
 | `LogoutToken` | Back-channel logout tokens with `typ: logout+jwt`, the `events` claim, `sid` or `sub`, and no `nonce` | [OIDC Back-Channel Logout 1.0](https://openid.net/specs/openid-connect-backchannel-1_0.html) |
 | `FormPost` | The auto-submitting HTML response with escaped values and a restrictive CSP | [OAuth 2.0 Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html) |
 | `AccessTokenVerifier.forIssuers` | One verifier for several tenants. It reads the unverified `iss`, picks the matching verifier from the host's list, and then runs that verifier. An `iss` outside the list throws `InvalidToken` and fetches no keys. | RFC 9068, RFC 8725 s3.10 |
-| `ApiKey` | `generate({ prefix })` returns a `Redacted` key of the form `<prefix>_<secret><checksum>`. `parse` checks the prefix and the CRC32 checksum without a storage lookup, so the host can reject typos and secret scanners can find leaked keys. `verify` compares the key with a stored `Token.hash` in constant time. | No standard. The format follows [GitHub's token format](https://github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/). |
+| `ApiKey` | `generate({ prefix })` returns a `Redacted` key of the form `<prefix>_<secret><checksum>`. `parse` checks the prefix and the CRC32 checksum without a storage lookup, so the host can reject typos and secret scanners can find leaked keys. `verify` compares the key with a stored `OpaqueToken.hash` in constant time. | No standard. The format follows [GitHub's token format](https://github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/). |
 
 RP-initiated logout needs no new module. The host verifies `id_token_hint` with `IdToken.verify({ allowExpired: true })` and matches `post_logout_redirect_uri` with `RedirectUri.matches`.
 

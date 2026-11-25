@@ -83,7 +83,7 @@ interface VerifyOptions {
 | --- | --- | --- | --- |
 | `issuer` | `string` | none | Required `iss`. |
 | `audience` | `string` | none | Required `aud` value. |
-| `keys` | [`Keys.VerifyKey`](/reference/keys/#verifykey) | none | A public key, a JWK, or a resolver from `Keys.localSet` or `Keys.remoteSet`. |
+| `keys` | [`Keys.VerifyKey`](/reference/keys/#verifykey) | none | A public key, a JWK, or a resolver from `Keys.localResolver` or `Keys.remoteResolver`. |
 | `algorithms` | `readonly string[]` | `Keys.tokenAlgorithms` | Narrows the allow-list. A value outside `ES256`, `EdDSA`, `PS256`, `RS256` throws `TypeError`. |
 | `clockTolerance` | `number` | `30` | Seconds of clock skew. |
 | `confirm` | function | none | Called with `cnf` of a sender-constrained token. Throw to reject. Without it, such tokens are rejected. |

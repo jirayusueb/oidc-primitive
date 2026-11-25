@@ -25,7 +25,7 @@ The frozen allow-list for tokens this library signs and verifies: `ES256`, `EdDS
 const assertionAlgorithms: readonly string[];
 ```
 
-The frozen list of asymmetric algorithms accepted for client assertions and advertised in metadata: `ES256`, `ES384`, `ES512`, `EdDSA`, `PS256`, `PS384`, `PS512`, `RS256`, `RS384`, `RS512`. `HS*` and `none` are never accepted. `ClientAssertion.verify` and `Metadata.authorizationServer` use it.
+The frozen list of asymmetric algorithms accepted for client assertions and advertised in metadata: `ES256`, `ES384`, `ES512`, `EdDSA`, `PS256`, `PS384`, `PS512`, `RS256`, `RS384`, `RS512`. `HS*` and `none` are never accepted. `ClientAssertion.verify` and `ServerMetadata.make` use it.
 
 ## KeyPair
 
@@ -108,30 +108,30 @@ const jkt = await Keys.thumbprint(await Keys.publicJwk(publicKey, { kid: 'k1', a
 type VerifyKey = CryptoKey | JWK | JWTVerifyGetKey;
 ```
 
-What token verification accepts: a public key, a JWK, or a resolver from `localSet` or `remoteSet`.
+What token verification accepts: a public key, a JWK, or a resolver from `localResolver` or `remoteResolver`.
 
-## localSet
+## localResolver
 
 ```ts title="signature"
-const localSet: (set: { readonly keys: ReadonlyArray<JWK> }) => JWTVerifyGetKey;
+const localResolver: (set: { readonly keys: ReadonlyArray<JWK> }) => JWTVerifyGetKey;
 ```
 
 A resolver over a JWK Set held locally, for example a client's registered `jwks`.
 
 ```ts
-const keys = Keys.localSet(await Keys.jwks([{ key: publicKey, kid: 'k1', alg: 'ES256' }]));
+const keys = Keys.localResolver(await Keys.jwks([{ key: publicKey, kid: 'k1', alg: 'ES256' }]));
 ```
 
-## remoteSet
+## remoteResolver
 
 ```ts title="signature"
-const remoteSet: (url: string | URL, options?: RemoteJWKSetOptions) => JWTVerifyGetKey;
+const remoteResolver: (url: string | URL, options?: RemoteJWKSetOptions) => JWTVerifyGetKey;
 ```
 
 A caching resolver over a remote `jwks_uri`. jose refetches once on an unknown `kid`. `options` is jose's `RemoteJWKSetOptions`. Fetch failures surface as `OAuthError.TemporarilyUnavailable` from the verifier that uses the resolver.
 
 ```ts
-const keys = Keys.remoteSet('https://client.example.com/jwks');
+const keys = Keys.remoteResolver('https://client.example.com/jwks');
 ```
 
 ## Spec

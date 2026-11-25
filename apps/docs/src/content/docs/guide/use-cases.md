@@ -7,11 +7,11 @@ description: Which pages and modules fit sign-in, API protection, machine-to-mac
 
 | You are building | Read | Modules that carry it |
 | --- | --- | --- |
-| Sign-in for your web or mobile app | [Authorization code flow](/guide/authorization-code-flow/) | `Pkce`, `RedirectUri`, `Token`, `TokenSigner`, `IdToken` |
+| Sign-in for your web or mobile app | [Authorization code flow](/guide/authorization-code-flow/) | `Pkce`, `RedirectUri`, `OpaqueToken`, `TokenSigner`, `IdToken` |
 | A protected API behind those tokens | [Resource servers](/guide/resource-servers/) | `AccessTokenVerifier`, `Bearer`, `ResourceMetadata` |
 | Machine-to-machine access | [Client credentials](/guide/client-credentials/) | `ClientSecret`, `ClientAssertion`, `TokenSigner` |
-| A SaaS that serves many tenants | [Multi-tenant](/guide/multi-tenant/) | `Metadata`, `Keys`, `TokenSigner`, `AccessTokenVerifier` |
-| An MCP server or its authorization server | [MCP authorization](/guide/mcp-authorization-server/) | `Pkce`, `Resource`, `ResourceMetadata`, `Metadata` |
+| A SaaS that serves many tenants | [Multi-tenant](/guide/multi-tenant/) | `ServerMetadata`, `Keys`, `TokenSigner`, `AccessTokenVerifier` |
+| An MCP server or its authorization server | [MCP authorization](/guide/mcp-authorization-server/) | `Pkce`, `Resource`, `ResourceMetadata`, `ServerMetadata` |
 
 ## What is deliberately not a use case
 
