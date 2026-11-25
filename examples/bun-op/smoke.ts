@@ -1,6 +1,6 @@
 // End-to-end check of the example OP: discovery -> authorize (PKCE S256 + nonce) -> login -> token -> userinfo
 // -> refresh -> introspect -> revoke, plus code-reuse and refresh-reuse revocation.
-import { IdToken, OpaqueToken, Pkce, Redacted } from 'oidc-primitive';
+import { AccessToken, IdToken, Keys, OpaqueToken, Pkce, Redacted } from 'oidc-primitive';
 import { start } from './index.ts';
 
 const probe = Bun.serve({ port: 0, fetch: () => new Response() });
@@ -42,8 +42,6 @@ const post = (
 		headers: { 'content-type': 'application/x-www-form-urlencoded', ...headers },
 		body: new URLSearchParams(body),
 	});
-const payload = (jwt: string): Record<string, unknown> =>
-	JSON.parse(atob(jwt.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/')));
 
 try {
 	const disc = (await (await fetch(`${issuer}/.well-known/openid-configuration`)).json()) as Record<
@@ -132,11 +130,23 @@ try {
 	const tr = await tokenReq((await grant()).searchParams.get('code')!);
 	const tok = (await tr.json()) as Record<string, string>;
 	check(tr.status === 200 && tok.token_type === 'Bearer' && tok.expires_in, 'token response');
-	const idt = payload(tok.id_token!);
+	// Verify both tokens against the OP's published JWKS: signature, iss, aud, exp (and typ for the access token).
+	const opKeys = Keys.remoteResolver(`${issuer}/jwks`);
+	const idt = (await IdToken.verify(tok.id_token!, {
+		issuer,
+		audience: 'demo',
+		keys: opKeys,
+	})) as Record<string, unknown>;
 	check(
-		idt.nonce === 'n0nce' && idt.aud === 'demo' && idt.iss === issuer,
-		'id_token nonce/aud/iss',
+		idt.nonce === 'n0nce' && idt.sub !== undefined,
+		'id_token verified (signature, iss, aud, exp, nonce)',
 	);
+	const at = await AccessToken.verify(tok.access_token!, {
+		issuer,
+		audience: issuer,
+		keys: opKeys,
+	});
+	check(at.client_id === 'demo', 'access_token verified (RFC 9068: signature, typ, iss, aud, exp)');
 	check(idt.at_hash === (await IdToken.atHash(tok.access_token!, 'RS256')), 'id_token at_hash');
 
 	const ui = await fetch(`${issuer}/userinfo`, {

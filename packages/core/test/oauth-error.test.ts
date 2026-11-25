@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
+import { inspect } from 'node:util';
 import { describe, it } from 'vitest';
-import { AccessToken, ClientAssertion, IdToken, Keys, OAuthError, Pkce } from '../src/index.ts';
+import {
+	AccessToken,
+	AccessTokenVerifier,
+	Bearer,
+	ClientAssertion,
+	ClientSecret,
+	IdToken,
+	Keys,
+	OAuthError,
+	Pkce,
+} from '../src/index.ts';
 
 describe('RFC 6749 s5.2 and s4.1.2.1 error responses', () => {
 	it('builds a no-store JSON error', async () => {
@@ -150,11 +161,21 @@ describe('RFC 6749 s10.3 and s10.10 errors carry no secret input (design G5)', (
 			),
 			IdToken.verify(secret, { issuer, audience: 'c', keys: publicKey }).catch((e: unknown) => e),
 			Pkce.verify(secret, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM').catch((e: unknown) => e),
+			AccessTokenVerifier.make({ issuer, audience: 'https://rs', keys: publicKey })
+				.verifyHeaders(new Headers({ Authorization: `Bearer ${secret}` }))
+				.catch((e: unknown) => e),
+			Promise.resolve()
+				.then(() => Bearer.parse(new Headers({ Authorization: `Bearer ${secret} x` })))
+				.catch((e: unknown) => e),
+			Promise.resolve()
+				.then(() => ClientSecret.parseBasic(`Basic ${secret}`))
+				.catch((e: unknown) => e),
 		]);
+		assert.equal(rejected.length, 7);
 		for (const error of rejected) {
 			assert.ok(error instanceof OAuthError.OAuthError);
 			const body = await error.toResponse().text();
-			for (const out of [String(error), `${error}`, JSON.stringify(error), body]) {
+			for (const out of [String(error), `${error}`, JSON.stringify(error), inspect(error), body]) {
 				assert.equal(out.includes(secret), false, out);
 			}
 		}

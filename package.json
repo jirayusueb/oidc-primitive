@@ -26,7 +26,7 @@
 		"docs:build": "bun run --filter docs build",
 		"format": "oxfmt",
 		"lint": "oxlint",
-		"prepare": "bun simple-git-hooks",
+		"prepare": "bun simple-git-hooks && bun run build",
 		"release": "bumpp -r --commit --push --tag",
 		"test": "bun test",
 		"test:node": "vitest run",

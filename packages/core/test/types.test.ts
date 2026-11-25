@@ -31,7 +31,7 @@ expectType<
 >();
 expectType<Equal<Parameters<TokenSigner.TokenSigner['signIdToken']>[0], IdToken.Claims>>();
 
-describe('Scope literals flow into verifier results (design D5)', () => {
+describe('RFC 6749 s3.3 scope literals flow into verifier results (design D5)', () => {
 	it('types granted scopes by the declaration', async () => {
 		const { publicKey } = await Keys.generate('ES256');
 		const verifier = AccessTokenVerifier.make({
